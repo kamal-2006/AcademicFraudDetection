@@ -1,0 +1,165 @@
+/* ===================================
+   PLAGIARISM PAGE STYLES
+   =================================== */
+
+.plagiarism-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* Summary Cards */
+.plagiarism-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.plagiarism-summary-card {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-left-width: 4px;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.plagiarism-summary-card.total {
+  border-left-color: var(--primary-color);
+}
+
+.plagiarism-summary-card.critical {
+  border-left-color: var(--danger-color);
+}
+
+.plagiarism-summary-card.high {
+  border-left-color: var(--warning-color);
+}
+
+.plagiarism-summary-card.acceptable {
+  border-left-color: var(--success-color);
+}
+
+/* Similarity Badge */
+.similarity-badge-container {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.similarity-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--border-radius-full);
+}
+
+.similarity-badge.low {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.similarity-badge.medium {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.similarity-badge.high {
+  background-color: #fed7aa;
+  color: #9a3412;
+}
+
+.similarity-badge.critical {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.similarity-alert-icon {
+  width: 1rem;
+  height: 1rem;
+  color: var(--danger-color);
+  flex-shrink: 0;
+}
+
+/* Critical Alert */
+.plagiarism-critical-alert {
+  background-color: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.plagiarism-critical-text {
+  font-size: var(--font-size-sm);
+  color: #991b1b;
+  font-weight: var(--font-weight-medium);
+}
+
+/* Guidelines Card */
+.plagiarism-guidelines-card {
+  background-color: var(--primary-light);
+  border: 1px solid #93c5fd;
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.plagiarism-guidelines-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: #1e40af;
+  margin-bottom: var(--spacing-sm);
+}
+
+.plagiarism-guidelines-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.plagiarism-guideline-item {
+  font-size: var(--font-size-sm);
+  color: #1e40af;
+  line-height: 1.6;
+  padding-left: var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
+}
+
+.plagiarism-guideline-item:last-child {
+  margin-bottom: 0;
+}
+
+.plagiarism-guideline-item strong {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Matched With Cell */
+.matched-with-cell {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Date Cell */
+.date-cell {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1024px) {
+  .plagiarism-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .plagiarism-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}

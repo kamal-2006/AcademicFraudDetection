@@ -1,0 +1,139 @@
+/* ===================================
+   EXAM PERFORMANCE PAGE STYLES
+   =================================== */
+
+.exams-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* Summary Cards */
+.exams-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.exam-summary-card {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-left-width: 4px;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.exam-summary-card.total {
+  border-left-color: var(--primary-color);
+}
+
+.exam-summary-card.anomalies {
+  border-left-color: var(--warning-color);
+}
+
+.exam-summary-card.normal {
+  border-left-color: var(--success-color);
+}
+
+/* Anomaly Badge */
+.anomaly-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 0.25rem 0.75rem;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--border-radius-full);
+}
+
+.anomaly-badge.normal {
+  color: var(--success-color);
+}
+
+.anomaly-badge.sudden-spike {
+  background-color: #fed7aa;
+  color: #9a3412;
+}
+
+.anomaly-badge.unusual-improvement {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.anomaly-badge.fast-completion {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* Score Cell with Icon */
+.score-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.score-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.score-icon.spike {
+  color: var(--warning-color);
+}
+
+/* Time Cell with Icon */
+.time-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.time-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.time-icon.fast {
+  color: var(--danger-color);
+}
+
+/* Exam Guidelines Card */
+.exam-guidelines-card {
+  background-color: var(--primary-light);
+  border: 1px solid #93c5fd;
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+}
+
+.exam-guidelines-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: #1e40af;
+  margin-bottom: var(--spacing-sm);
+}
+
+.exam-guidelines-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.exam-guideline-item {
+  font-size: var(--font-size-sm);
+  color: #1e40af;
+  line-height: 1.6;
+  padding-left: var(--spacing-md);
+}
+
+.exam-guideline-item strong {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .exams-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,400 @@
+/* ===================================
+   FRAUD REPORTS PAGE STYLES
+   =================================== */
+
+.reports-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* Filter Section */
+.reports-filter-section {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.reports-filter-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* Report Table */
+.reports-table-container {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.report-row {
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.report-row:hover {
+  background-color: var(--bg-tertiary);
+}
+
+/* Report Detail Page */
+.report-detail-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.report-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.report-detail-title-group {
+  flex: 1;
+}
+
+.report-case-id {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.report-detail-badges {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+/* Report Grid Layout */
+.report-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: var(--spacing-lg);
+}
+
+.report-main-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.report-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* Report Information Card */
+.report-info-card {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.report-info-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.report-info-item {
+  margin-bottom: var(--spacing-md);
+}
+
+.report-info-item:last-child {
+  margin-bottom: 0;
+}
+
+.report-info-label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.report-info-value {
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/* Evidence List */
+.evidence-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.evidence-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) 0;
+}
+
+.evidence-item:not(:last-child) {
+  border-bottom: 1px solid var(--border-light);
+}
+
+.evidence-icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--primary-color);
+  margin-top: 0.125rem;
+}
+
+.evidence-text {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/* Student Profile Card */
+.student-profile-card {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.student-profile-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.student-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  background-color: var(--primary-light);
+  color: var(--primary-color);
+  border-radius: var(--border-radius-full);
+  flex-shrink: 0;
+}
+
+.student-profile-info {
+  flex: 1;
+}
+
+.student-name {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.student-id {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.student-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.student-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.student-detail-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.student-detail-value {
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* History Stats */
+.student-history-card {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.history-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.history-stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.history-stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.history-stat-value {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.history-stat-value.warning {
+  color: var(--warning-color);
+}
+
+.history-stat-value.danger {
+  color: var(--danger-color);
+}
+
+/* Risk Assessment Card */
+.risk-assessment-card {
+  background-color: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+}
+
+.risk-assessment-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.risk-assessment-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--danger-color);
+}
+
+.risk-assessment-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: #991b1b;
+  margin: 0;
+}
+
+.risk-assessment-message {
+  font-size: var(--font-size-sm);
+  color: #991b1b;
+  line-height: 1.5;
+}
+
+/* Action Buttons */
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--border-radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.status-badge.pending {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+.status-badge.investigating {
+  background-color: var(--primary-light);
+  color: #1e40af;
+}
+
+.status-badge.resolved {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.dismissed {
+  background-color: #e5e7eb;
+  color: #6b7280;
+}
+
+/* Back Button */
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  transition: all var(--transition-fast);
+  margin-bottom: var(--spacing-lg);
+}
+
+.back-button:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1024px) {
+  .report-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .report-sidebar {
+    order: -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .report-detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .report-actions {
+    width: 100%;
+  }
+  
+  .report-actions .btn {
+    flex: 1;
+  }
+}
