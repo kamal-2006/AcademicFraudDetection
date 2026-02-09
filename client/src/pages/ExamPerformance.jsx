@@ -1,116 +1,121 @@
 import { useState, useEffect } from 'react';
-import { FileText, TrendingUp, Clock } from 'lucide-react';
+import { Search, Filter, FileText, TrendingUp, TrendingDown, Award } from 'lucide-react';
 import Card from '../components/Card';
 import Table from '../components/Table';
 import Loading from '../components/Loading';
 import Alert from '../components/Alert';
-import api from '../api/axios';
+import { examService } from '../api/services';
 
 const ExamPerformance = () => {
   const [examData, setExamData] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [failingStudents, setFailingStudents] = useState([]);
+  const [highRiskStudents, setHighRiskStudents] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [examTypes, setExamTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterSubject, setFilterSubject] = useState('');
+  const [filterExamType, setFilterExamType] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterSemester, setFilterSemester] = useState('');
 
   useEffect(() => {
-    fetchExamData();
-  }, []);
+    fetchAllData();
+  }, [filterSubject, filterExamType, filterStatus, filterSemester]);
 
-  const fetchExamData = async () => {
+  const fetchAllData = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/exams/performance');
-      setExamData(response.data);
+      setError('');
+
+      // Build filters
+      const filters = {};
+      if (filterSubject) filters.subject = filterSubject;
+      if (filterExamType) filters.examType = filterExamType;
+      if (filterStatus) filters.status = filterStatus;
+      if (filterSemester) filters.semester = filterSemester;
+
+      // Fetch exam records
+      const examResponse = await examService.getAllExams(filters);
+      setExamData(examResponse.data || []);
+
+      // Fetch statistics
+      const statsResponse = await examService.getExamStats();
+      setStats(statsResponse.data || null);
+
+      // Fetch failing students
+      const failingResponse = await examService.getFailingStudents();
+      setFailingStudents(failingResponse.data || []);
+
+      // Fetch high-risk students
+      const highRiskResponse = await examService.getHighRiskStudents();
+      setHighRiskStudents(highRiskResponse.data || []);
+
+      // Fetch subjects for filter
+      const subjectsResponse = await examService.getSubjects();
+      setSubjects(subjectsResponse.data || []);
+
+      // Fetch exam types for filter
+      const typesResponse = await examService.getExamTypes();
+      setExamTypes(typesResponse.data || []);
     } catch (err) {
       console.error('Error fetching exam data:', err);
-      // Mock data if API fails
-      setExamData([
-        {
-          id: 1,
-          studentId: 'STU001',
-          name: 'John Doe',
-          examName: 'Midterm - Computer Networks',
-          score: 85,
-          avgScore: 78,
-          completionTime: 90,
-          avgTime: 95,
-          anomaly: null,
-        },
-        {
-          id: 2,
-          studentId: 'STU002',
-          name: 'Jane Smith',
-          examName: 'Final - Data Structures',
-          score: 92,
-          avgScore: 75,
-          completionTime: 45,
-          avgTime: 120,
-          anomaly: 'sudden_spike',
-        },
-        {
-          id: 3,
-          studentId: 'STU003',
-          name: 'Mike Johnson',
-          examName: 'Midterm - Algorithms',
-          score: 78,
-          avgScore: 45,
-          completionTime: 35,
-          avgTime: 110,
-          anomaly: 'unusual_improvement',
-        },
-        {
-          id: 4,
-          studentId: 'STU004',
-          name: 'Sarah Williams',
-          examName: 'Quiz - Database Systems',
-          score: 88,
-          avgScore: 85,
-          completionTime: 28,
-          avgTime: 30,
-          anomaly: null,
-        },
-        {
-          id: 5,
-          studentId: 'STU005',
-          name: 'David Brown',
-          examName: 'Final - Web Development',
-          score: 95,
-          avgScore: 40,
-          completionTime: 25,
-          avgTime: 100,
-          anomaly: 'fast_completion',
-        },
-        {
-          id: 6,
-          studentId: 'STU006',
-          name: 'Emily Davis',
-          examName: 'Midterm - Software Engineering',
-          score: 82,
-          avgScore: 80,
-          completionTime: 95,
-          avgTime: 90,
-          anomaly: null,
-        },
-      ]);
+      setError('Failed to load exam data. Please try again.');
+      setExamData([]);
+      setFailingStudents([]);
+      setHighRiskStudents([]);
+      setSubjects([]);
+      setExamTypes([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const getAnomalyBadge = (anomaly) => {
-    if (!anomaly) {
-      return <span className="text-green-600 text-sm">✓ Normal</span>;
-    }
+  // Filter data based on search term
+  const filteredData = examData.filter((record) => {
+    const matchesSearch =
+      record.studentId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.student?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.examName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.subject?.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
 
-    const anomalyConfig = {
-      sudden_spike: { label: 'Sudden Spike', color: 'bg-orange-100 text-orange-800' },
-      unusual_improvement: { label: 'Unusual Improvement', color: 'bg-yellow-100 text-yellow-800' },
-      fast_completion: { label: 'Fast Completion', color: 'bg-red-100 text-red-800' },
+  const getStatusBadge = (status) => {
+    if (status === 'Pass') {
+      return (
+        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+          PASS
+        </span>
+      );
+    }
+    return (
+      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+        FAIL
+      </span>
+    );
+  };
+
+  const getGradeBadge = (grade) => {
+    const gradeColors = {
+      'A+': 'bg-green-100 text-green-800',
+      A: 'bg-green-100 text-green-800',
+      'A-': 'bg-green-100 text-green-800',
+      'B+': 'bg-blue-100 text-blue-800',
+      B: 'bg-blue-100 text-blue-800',
+      'B-': 'bg-blue-100 text-blue-800',
+      'C+': 'bg-yellow-100 text-yellow-800',
+      C: 'bg-yellow-100 text-yellow-800',
+      'C-': 'bg-yellow-100 text-yellow-800',
+      D: 'bg-orange-100 text-orange-800',
+      F: 'bg-red-100 text-red-800',
     };
 
-    const config = anomalyConfig[anomaly];
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${config.color}`}>
-        ⚠ {config.label}
+      <span className={`px-2 py-1 rounded text-xs font-semibold ${gradeColors[grade] || ''}`}>
+        {grade}
       </span>
     );
   };
@@ -122,116 +127,279 @@ const ExamPerformance = () => {
     },
     {
       header: 'Name',
-      accessor: 'name',
+      accessor: 'student',
+      render: (row) => row.student?.name || 'N/A',
     },
     {
-      header: 'Exam',
+      header: 'Exam Name',
       accessor: 'examName',
     },
     {
-      header: 'Score',
-      accessor: 'score',
+      header: 'Subject',
+      accessor: 'subject',
+    },
+    {
+      header: 'Exam Type',
+      accessor: 'examType',
+    },
+    {
+      header: 'Marks',
+      accessor: 'obtainedMarks',
+      render: (row) => `${row.obtainedMarks}/${row.totalMarks}`,
+    },
+    {
+      header: 'Percentage',
+      accessor: 'percentage',
       render: (row) => (
-        <span className="font-semibold">
-          {row.score}% 
-          {row.score > row.avgScore + 20 && (
-            <TrendingUp className="inline w-4 h-4 ml-1 text-orange-600" />
-          )}
-        </span>
+        <span className="font-semibold">{row.percentage?.toFixed(2)}%</span>
       ),
     },
     {
-      header: 'Avg Score',
-      accessor: 'avgScore',
-      render: (row) => `${row.avgScore}%`,
-    },
-    {
-      header: 'Time (min)',
-      accessor: 'completionTime',
-      render: (row) => (
-        <span>
-          {row.completionTime}
-          {row.completionTime < row.avgTime * 0.5 && (
-            <Clock className="inline w-4 h-4 ml-1 text-red-600" />
-          )}
-        </span>
-      ),
+      header: 'Grade',
+      accessor: 'grade',
+      render: (row) => getGradeBadge(row.grade),
     },
     {
       header: 'Status',
-      accessor: 'anomaly',
-      render: (row) => getAnomalyBadge(row.anomaly),
+      accessor: 'status',
+      render: (row) => getStatusBadge(row.status),
     },
   ];
-
-  const anomalyCases = examData.filter((record) => record.anomaly !== null);
 
   if (loading) {
     return <Loading fullScreen />;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="exam-container">
       {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Exam Performance</h1>
-        <p className="text-gray-600 mt-2">Monitor exam scores and detect anomalies</p>
+      <div className="page-header">
+        <h1 className="page-title">Exam Performance</h1>
+        <p className="page-description">Monitor exam scores and student performance</p>
       </div>
 
       {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Exams</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{examData.length}</p>
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Exams</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalExams || 0}</p>
+              </div>
+              <FileText className="w-8 h-8 text-blue-600" />
             </div>
-            <FileText className="w-8 h-8 text-blue-600" />
-          </div>
-        </Card>
+          </Card>
 
-        <Card className="p-6 border-l-4 border-orange-400">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Anomalies Detected</p>
-              <p className="text-3xl font-bold text-orange-600 mt-2">{anomalyCases.length}</p>
-              <p className="text-xs text-gray-500 mt-1">Flagged for review</p>
+          <Card className="p-6 border-l-4 border-purple-400">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Average Score</p>
+                <p className="text-3xl font-bold text-purple-600 mt-2">
+                  {stats.avgPercentage?.toFixed(1)}%
+                </p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-purple-600" />
             </div>
-            <TrendingUp className="w-8 h-8 text-orange-600" />
-          </div>
-        </Card>
+          </Card>
 
-        <Card className="p-6 border-l-4 border-green-400">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Normal Performance</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">
-                {examData.length - anomalyCases.length}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">No issues</p>
+          <Card className="p-6 border-l-4 border-green-400">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Passed</p>
+                <p className="text-3xl font-bold text-green-600 mt-2">{stats.passCount || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">{stats.passRate?.toFixed(1)}% pass rate</p>
+              </div>
+              <Award className="w-8 h-8 text-green-600" />
             </div>
-            <FileText className="w-8 h-8 text-green-600" />
-          </div>
-        </Card>
-      </div>
+          </Card>
 
-      {/* Alert for anomalies */}
-      {anomalyCases.length > 0 && (
+          <Card className="p-6 border-l-4 border-red-400">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Failed</p>
+                <p className="text-3xl font-bold text-red-600 mt-2">{stats.failCount || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">Require attention</p>
+              </div>
+              <TrendingDown className="w-8 h-8 text-red-600" />
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Alert for failing students */}
+      {failingStudents.length > 0 && (
         <Alert
           type="warning"
-          message={`${anomalyCases.length} exam record(s) show anomalous patterns including sudden score spikes and unusually fast completion times.`}
+          message={`${failingStudents.length} student(s) have failed exams and require immediate attention.`}
         />
       )}
+
+      {/* Search and Filters */}
+      <div className="search-filter-section">
+        <div className="search-filter-wrapper">
+          {/* Search */}
+          <div className="search-wrapper">
+            <Search className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search by student ID, name, exam, or subject..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+          </div>
+
+          {/* Subject Filter */}
+          <div className="filter-wrapper">
+            <Filter className="filter-icon" />
+            <select
+              value={filterSubject}
+              onChange={(e) => setFilterSubject(e.target.value)}
+              className="filter-select"
+            >
+              <option value="">All Subjects</option>
+              {subjects.map((subject) => (
+                <option key={subject} value={subject}>
+                  {subject}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Exam Type Filter */}
+          <div className="filter-wrapper">
+            <Filter className="filter-icon" />
+            <select
+              value={filterExamType}
+              onChange={(e) => setFilterExamType(e.target.value)}
+              className="filter-select"
+            >
+              <option value="">All Exam Types</option>
+              {examTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status Filter */}
+          <div className="filter-wrapper">
+            <Filter className="filter-icon" />
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="filter-select"
+            >
+              <option value="">All Status</option>
+              <option value="Pass">Pass</option>
+              <option value="Fail">Fail</option>
+            </select>
+          </div>
+
+          {/* Semester Filter */}
+          <div className="filter-wrapper">
+            <Filter className="filter-icon" />
+            <select
+              value={filterSemester}
+              onChange={(e) => setFilterSemester(e.target.value)}
+              className="filter-select"
+            >
+              <option value="">All Semesters</option>
+              <option value="Fall">Fall</option>
+              <option value="Spring">Spring</option>
+              <option value="Summer">Summer</option>
+            </select>
+          </div>
+        </div>
+      </div>
 
       {/* Exam Performance Table */}
       <Card>
         <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Exam Records</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Exam Records ({filteredData.length})
+          </h2>
         </div>
-        <Table columns={columns} data={examData} />
+        {filteredData.length > 0 ? (
+          <Table columns={columns} data={filteredData} />
+        ) : (
+          <div className="p-8 text-center text-gray-500">
+            No exam records found. Try adjusting your filters.
+          </div>
+        )}
       </Card>
+
+      {/* High Risk Students */}
+      {highRiskStudents.length > 0 && (
+        <Card>
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">
+              High-Risk Students ({highRiskStudents.length})
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Students with low average scores or multiple failures
+            </p>
+          </div>
+          <div className="p-4">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Student ID
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Name
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Department
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Avg Score
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Failed Exams
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Low Score Exams
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {highRiskStudents.map((student) => (
+                    <tr key={student.studentId}>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {student.studentId}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {student.name}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {student.department}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">
+                        <span className="font-semibold text-red-600">
+                          {student.avgPercentage?.toFixed(2)}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {student.failedExams || 0}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {student.lowScoreExams || 0}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };

@@ -41,26 +41,118 @@ export const studentService = {
 
 // Attendance services
 export const attendanceService = {
-  getAllAttendance: async () => {
-    const response = await api.get('/attendance');
+  // Get all attendance records with filters
+  getAllAttendance: async (filters = {}) => {
+    const params = new URLSearchParams(filters);
+    const response = await api.get(`/attendance?${params}`);
     return response.data;
   },
 
-  getStudentAttendance: async (studentId) => {
-    const response = await api.get(`/attendance/${studentId}`);
+  // Get attendance by student ID
+  getStudentAttendance: async (studentId, filters = {}) => {
+    const params = new URLSearchParams(filters);
+    const response = await api.get(`/attendance/student/${studentId}?${params}`);
+    return response.data;
+  },
+
+  // Create attendance record
+  createAttendance: async (data) => {
+    const response = await api.post('/attendance', data);
+    return response.data;
+  },
+
+  // Update attendance record
+  updateAttendance: async (id, data) => {
+    const response = await api.put(`/attendance/${id}`, data);
+    return response.data;
+  },
+
+  // Delete attendance record
+  deleteAttendance: async (id) => {
+    const response = await api.delete(`/attendance/${id}`);
+    return response.data;
+  },
+
+  // Get attendance statistics
+  getAttendanceStats: async () => {
+    const response = await api.get('/attendance/stats/overview');
+    return response.data;
+  },
+
+  // Get low attendance students
+  getLowAttendanceStudents: async (threshold = 75) => {
+    const response = await api.get(`/attendance/stats/low-attendance?threshold=${threshold}`);
+    return response.data;
+  },
+
+  // Get subjects list
+  getSubjects: async () => {
+    const response = await api.get('/attendance/filters/subjects');
     return response.data;
   },
 };
 
 // Exam services
 export const examService = {
-  getAllExams: async () => {
-    const response = await api.get('/exams/performance');
+  // Get all exam records with filters
+  getAllExams: async (filters = {}) => {
+    const params = new URLSearchParams(filters);
+    const response = await api.get(`/exams?${params}`);
     return response.data;
   },
 
-  getExamById: async (id) => {
-    const response = await api.get(`/exams/${id}`);
+  // Get exams by student ID
+  getStudentExams: async (studentId, filters = {}) => {
+    const params = new URLSearchParams(filters);
+    const response = await api.get(`/exams/student/${studentId}?${params}`);
+    return response.data;
+  },
+
+  // Create exam record
+  createExam: async (data) => {
+    const response = await api.post('/exams', data);
+    return response.data;
+  },
+
+  // Update exam record
+  updateExam: async (id, data) => {
+    const response = await api.put(`/exams/${id}`, data);
+    return response.data;
+  },
+
+  // Delete exam record
+  deleteExam: async (id) => {
+    const response = await api.delete(`/exams/${id}`);
+    return response.data;
+  },
+
+  // Get exam statistics
+  getExamStats: async () => {
+    const response = await api.get('/exams/stats/overview');
+    return response.data;
+  },
+
+  // Get failing students
+  getFailingStudents: async () => {
+    const response = await api.get('/exams/stats/failing');
+    return response.data;
+  },
+
+  // Get high-risk students
+  getHighRiskStudents: async () => {
+    const response = await api.get('/exams/stats/high-risk');
+    return response.data;
+  },
+
+  // Get subjects list
+  getSubjects: async () => {
+    const response = await api.get('/exams/filters/subjects');
+    return response.data;
+  },
+
+  // Get exam types list
+  getExamTypes: async () => {
+    const response = await api.get('/exams/filters/exam-types');
     return response.data;
   },
 };
