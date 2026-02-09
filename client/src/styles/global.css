@@ -70,6 +70,7 @@
   /* Layout */
   --header-height: 4rem;
   --sidebar-width: 16rem;
+  --sidebar-collapsed-width: 4.5rem;
   
   /* Transitions */
   --transition-fast: 150ms ease-in-out;
