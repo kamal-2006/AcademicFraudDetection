@@ -172,8 +172,8 @@ export const plagiarismService = {
 
 // Fraud Report services
 export const fraudReportService = {
-  getAllReports: async () => {
-    const response = await api.get('/fraud-reports');
+  getAllReports: async (params = {}) => {
+    const response = await api.get('/fraud-reports', { params });
     return response.data;
   },
 
@@ -182,13 +182,36 @@ export const fraudReportService = {
     return response.data;
   },
 
-  updateReportStatus: async (id, status) => {
-    const response = await api.patch(`/fraud-reports/${id}/status`, { status });
+  updateReport: async (id, data) => {
+    const response = await api.put(`/fraud-reports/${id}`, data);
     return response.data;
   },
 
   createReport: async (reportData) => {
     const response = await api.post('/fraud-reports', reportData);
+    return response.data;
+  },
+
+  deleteReport: async (id) => {
+    const response = await api.delete(`/fraud-reports/${id}`);
+    return response.data;
+  },
+
+  getStatistics: async (params = {}) => {
+    const response = await api.get('/fraud-reports/statistics/summary', { params });
+    return response.data;
+  },
+
+  exportCSV: async (params = {}) => {
+    const response = await api.get('/fraud-reports/export/csv', {
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+
+  exportJSON: async (params = {}) => {
+    const response = await api.get('/fraud-reports/export/json', { params });
     return response.data;
   },
 };

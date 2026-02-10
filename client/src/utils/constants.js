@@ -33,7 +33,10 @@ export const RISK_COLORS = {
 // Status colors for UI
 export const STATUS_COLORS = {
   pending: 'bg-gray-100 text-gray-800',
+  'pending-review': 'bg-gray-100 text-gray-800',
   investigating: 'bg-blue-100 text-blue-800',
+  'under-investigation': 'bg-blue-100 text-blue-800',
   resolved: 'bg-green-100 text-green-800',
+  confirmed: 'bg-red-100 text-red-800',
   dismissed: 'bg-gray-100 text-gray-600',
 };

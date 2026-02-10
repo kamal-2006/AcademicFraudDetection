@@ -1,4 +1,4 @@
-const Loading = ({ size = 'md', fullScreen = false }) => {
+const Loading = ({ size = 'md', fullScreen = false, message = 'Loading...' }) => {
   const sizeClass = {
     sm: 'spinner-sm',
     md: '',
@@ -6,7 +6,10 @@ const Loading = ({ size = 'md', fullScreen = false }) => {
   }[size];
 
   const spinner = (
-    <div className={`spinner ${sizeClass}`}></div>
+    <div className="loading-spinner-wrapper">
+      <div className={`spinner ${sizeClass}`}></div>
+      {message && <p className="loading-text">{message}</p>}
+    </div>
   );
 
   if (fullScreen) {
@@ -14,7 +17,6 @@ const Loading = ({ size = 'md', fullScreen = false }) => {
       <div className="loading-fullscreen">
         <div className="loading-content">
           {spinner}
-          <p className="loading-text">Loading...</p>
         </div>
       </div>
     );

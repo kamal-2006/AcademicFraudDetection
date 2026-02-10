@@ -25,50 +25,80 @@ const FraudReportDetail = () => {
   const fetchReportDetail = async () => {
     try {
       setLoading(true);
+      setError('');
       const response = await api.get(`/fraud-reports/${id}`);
-      setReport(response.data);
+      // Backend returns { success: true, data: {...} }
+      if (response.data.success && response.data.data) {
+        const reportData = response.data.data;
+        // Transform backend data to match frontend expectations
+        const transformedReport = {
+          id: reportData._id,
+          caseId: `FR-${new Date(reportData.detectionTimestamp).getFullYear()}-${String(reportData._id).slice(-4).toUpperCase()}`,
+          studentId: reportData.studentId,
+          studentName: reportData.student?.name || 'Unknown',
+          studentEmail: reportData.student?.email || '',
+          department: reportData.student?.department || '',
+          year: reportData.student?.year ? `${reportData.student.year}${getOrdinalSuffix(reportData.student.year)} Year` : 'N/A',
+          fraudType: reportData.fraudType,
+          description: reportData.systemRemarks || 'No description available',
+          detailedFindings: reportData.systemRemarks || 'No detailed findings available',
+          riskLevel: reportData.riskLevel?.toLowerCase() || 'low',
+          riskScore: reportData.riskScore,
+          status: reportData.status?.toLowerCase().replace(' ', '-') || 'pending',
+          reportedDate: reportData.detectionTimestamp,
+          investigator: reportData.reviewedBy || null,
+          reviewNotes: reportData.reviewNotes || '',
+          evidence: [],
+          plagiarismScore: reportData.plagiarismScore,
+          matchedSources: reportData.matchedSources || [],
+          attendanceIrregularities: reportData.attendanceIrregularities,
+          identityAnomalies: reportData.identityAnomalies,
+          studentHistory: {
+            previousCases: 0,
+            avgGPA: reportData.student?.gpa || 0,
+            attendance: reportData.student?.attendance || 0,
+          },
+        };
+        setReport(transformedReport);
+      } else {
+        setError('Report not found');
+      }
+      setLoading(false);
     } catch (err) {
       console.error('Error fetching report detail:', err);
-      // Mock data if API fails
-      setReport({
-        id: parseInt(id),
-        caseId: 'FR-2026-001',
-        studentId: 'STU003',
-        studentName: 'Mike Johnson',
-        studentEmail: 'mike.j@university.edu',
-        department: 'Computer Science',
-        year: '4th Year',
-        fraudType: 'Plagiarism',
-        description: 'Assignment submission shows 92% similarity with another student\'s work',
-        detailedFindings: 'Detailed analysis reveals that the code structure, variable names, and comments are almost identical. The submission matches with student STU015\'s previous assignment from last semester.',
-        riskLevel: 'critical',
-        status: 'pending',
-        reportedDate: '2026-01-20T10:30:00',
-        investigator: null,
-        evidence: [
-          'Similarity report showing 92% match',
-          'Side-by-side code comparison',
-          'Submission timestamps analysis'
-        ],
-        studentHistory: {
-          previousCases: 1,
-          avgGPA: 2.0,
-          attendance: 45,
-        },
-      });
-    } finally {
+      setError(err.response?.data?.message || 'Failed to load report details. Please try again.');
       setLoading(false);
     }
+  };
+
+  // Helper function to get ordinal suffix
+  const getOrdinalSuffix = (num) => {
+    const j = num % 10;
+    const k = num % 100;
+    if (j === 1 && k !== 11) return num + 'st';
+    if (j === 2 && k !== 12) return num + 'nd';
+    if (j === 3 && k !== 13) return num + 'rd';
+    return num + 'th';
   };
 
   const updateStatus = async (newStatus) => {
     try {
       setUpdating(true);
-      await api.patch(`/fraud-reports/${id}/status`, { status: newStatus });
+      setError('');
+      // Backend uses PUT and expects status in specific format
+      const statusMap = {
+        'pending': 'Pending Review',
+        'investigating': 'Under Investigation',
+        'resolved': 'Resolved',
+        'confirmed': 'Confirmed',
+        'dismissed': 'Dismissed'
+      };
+      const backendStatus = statusMap[newStatus] || newStatus;
+      await api.put(`/fraud-reports/${id}`, { status: backendStatus });
       setReport({ ...report, status: newStatus });
-      Alert({ type: 'success', message: `Status updated to ${newStatus}` });
+      // Show success message (you can implement a toast notification here)
     } catch (err) {
-      setError('Failed to update status');
+      setError(err.response?.data?.message || 'Failed to update status');
     } finally {
       setUpdating(false);
     }

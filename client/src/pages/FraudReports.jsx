@@ -26,11 +26,47 @@ const FraudReports = () => {
   const fetchFraudReports = async () => {
     try {
       setLoading(true);
+      setError('');
       const response = await api.get('/fraud-reports');
-      setReports(response.data);
+      // Backend returns { success: true, data: [...], pagination: {...} }
+      if (response.data.success && response.data.data) {
+        // Transform backend data to match frontend expectations
+        const transformedReports = response.data.data.map(report => ({
+          id: report._id,
+          caseId: `FR-${new Date(report.detectionTimestamp).getFullYear()}-${String(report._id).slice(-4).toUpperCase()}`,
+          studentId: report.studentId,
+          studentName: report.student?.name || 'Unknown',
+          studentEmail: report.student?.email || '',
+          department: report.student?.department || '',
+          fraudType: report.fraudType,
+          description: report.systemRemarks || 'No description available',
+          riskLevel: report.riskLevel?.toLowerCase() || 'low',
+          riskScore: report.riskScore,
+          status: report.status?.toLowerCase().replace(' ', '-') || 'pending',
+          reportedDate: report.detectionTimestamp,
+          investigator: report.reviewedBy || null,
+          plagiarismScore: report.plagiarismScore,
+          matchedSources: report.matchedSources || [],
+          attendanceIrregularities: report.attendanceIrregularities,
+          identityAnomalies: report.identityAnomalies,
+        }));
+        setReports(transformedReports);
+      } else {
+        setReports([]);
+      }
+      setLoading(false);
     } catch (err) {
       console.error('Error fetching fraud reports:', err);
-      // Mock data if API fails
+      setError(err.response?.data?.message || 'Failed to load fraud reports. Please try again.');
+      // Use empty array on error instead of mock data
+      setReports([]);
+      setLoading(false);
+    }
+  };
+
+  const fetchFraudReportsFallback = async () => {
+    // Fallback with mock data for testing
+    try {
       setReports([
         {
           id: 1,
@@ -105,7 +141,9 @@ const FraudReports = () => {
           investigator: 'Dr. Brown',
         },
       ]);
-    } finally {
+      setLoading(false);
+    } catch (err) {
+      console.error('Fallback error:', err);
       setLoading(false);
     }
   };
@@ -274,7 +312,19 @@ const FraudReports = () => {
             Fraud Cases ({filteredReports.length})
           </h2>
         </div>
-        <Table columns={columns} data={filteredReports} />
+        {filteredReports.length === 0 ? (
+          <div className="text-center py-12">
+            <AlertTriangle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Fraud Reports Found</h3>
+            <p className="text-gray-600">
+              {reports.length === 0 
+                ? 'There are no fraud reports in the system yet.' 
+                : 'No reports match the selected filters.'}
+            </p>
+          </div>
+        ) : (
+          <Table columns={columns} data={filteredReports} />
+        )}
       </Card>
     </div>
   );
