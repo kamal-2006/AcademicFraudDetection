@@ -118,6 +118,50 @@ const Dashboard = () => {
       ]
     : [];
 
+  // Prepare grade distribution data
+  const gradeDistributionData = examStats?.gradeDistribution
+    ? [
+        { grade: 'A+', count: examStats.gradeDistribution['A+'] || 0, color: '#10b981' },
+        { grade: 'A', count: examStats.gradeDistribution['A'] || 0, color: '#34d399' },
+        { grade: 'A-', count: examStats.gradeDistribution['A-'] || 0, color: '#6ee7b7' },
+        { grade: 'B+', count: examStats.gradeDistribution['B+'] || 0, color: '#60a5fa' },
+        { grade: 'B', count: examStats.gradeDistribution['B'] || 0, color: '#3b82f6' },
+        { grade: 'B-', count: examStats.gradeDistribution['B-'] || 0, color: '#2563eb' },
+        { grade: 'C+', count: examStats.gradeDistribution['C+'] || 0, color: '#fbbf24' },
+        { grade: 'C', count: examStats.gradeDistribution['C'] || 0, color: '#f59e0b' },
+        { grade: 'C-', count: examStats.gradeDistribution['C-'] || 0, color: '#d97706' },
+        { grade: 'D', count: examStats.gradeDistribution['D'] || 0, color: '#fb923c' },
+        { grade: 'F', count: examStats.gradeDistribution['F'] || 0, color: '#ef4444' },
+      ].filter(item => item.count > 0)
+    : [];
+
+  // Prepare performance comparison data
+  const performanceComparisonData = [
+    {
+      category: 'Attendance',
+      average: attendanceStats?.avgAttendance || 0,
+      target: 75,
+      status: (attendanceStats?.avgAttendance || 0) >= 75 ? 'Good' : 'Below Target',
+    },
+    {
+      category: 'Exam Score',
+      average: examStats?.avgPercentage || 0,
+      target: 60,
+      status: (examStats?.avgPercentage || 0) >= 60 ? 'Good' : 'Below Target',
+    },
+  ];
+
+  // Prepare risk level distribution
+  const riskLevelData = [
+    {
+      name: 'Low Risk',
+      value: stats.totalStudents - (lowAttendanceStudents.length + highRiskStudents.length),
+      color: '#10b981',
+    },
+    { name: 'Attendance Risk', value: lowAttendanceStudents.length, color: '#f59e0b' },
+    { name: 'Performance Risk', value: highRiskStudents.length, color: '#ef4444' },
+  ].filter(item => item.value > 0);
+
   // Combine high-risk students from both attendance and exams
   const combinedHighRiskStudents = [
     ...lowAttendanceStudents.slice(0, 5).map(s => ({ ...s, reason: 'Low Attendance' })),
@@ -303,13 +347,27 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* Charts */}
-      <div className="charts-grid">
-        {/* Attendance Status Distribution */}
-        {attendanceStats && attendanceChartData.length > 0 && (
-          <div className="chart-card">
-            <h3 className="chart-title">Attendance Status Distribution</h3>
-            <div className="chart-container">
+      {/* Charts and Analytics Section */}
+      <div className="mt-8">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Analytics & Visualizations</h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Comprehensive data visualization and trend analysis
+          </p>
+        </div>
+
+        {/* Primary Charts - Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Attendance Status Distribution */}
+          {attendanceStats && attendanceChartData.length > 0 && (
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Attendance Status Distribution</h3>
+                  <p className="text-sm text-gray-500">Current attendance status breakdown</p>
+                </div>
+                <Calendar className="w-6 h-6 text-blue-600" />
+              </div>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
@@ -317,8 +375,8 @@ const Dashboard = () => {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, value }) => `${name}: ${value}`}
-                    outerRadius={80}
+                    label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                    outerRadius={100}
                     fill="#8884d8"
                     dataKey="value"
                   >
@@ -326,36 +384,188 @@ const Dashboard = () => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip formatter={(value) => [`${value} students`, 'Count']} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
-            </div>
-          </div>
-        )}
+            </Card>
+          )}
 
-        {/* Exam Pass/Fail Distribution */}
-        {examStats && examPassFailData.length > 0 && (
-          <div className="chart-card">
-            <h3 className="chart-title">Exam Pass/Fail Distribution</h3>
-            <div className="chart-container">
+          {/* Exam Pass/Fail Distribution */}
+          {examStats && examPassFailData.length > 0 && (
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Exam Pass/Fail Distribution</h3>
+                  <p className="text-sm text-gray-500">Overall exam performance results</p>
+                </div>
+                <FileText className="w-6 h-6 text-purple-600" />
+              </div>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={examPassFailData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="name" stroke="#6b7280" />
+                  <YAxis stroke="#6b7280" />
+                  <Tooltip
+                    formatter={(value) => [`${value} students`, 'Count']}
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
+                  />
                   <Legend />
-                  <Bar dataKey="value" fill="#8884d8">
+                  <Bar dataKey="value" fill="#8884d8" radius={[8, 8, 0, 0]}>
                     {examPassFailData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+            </Card>
+          )}
+        </div>
+
+        {/* Grade Distribution Chart - Full Width */}
+        {gradeDistributionData.length > 0 && (
+          <Card className="p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Grade Distribution Analysis</h3>
+                <p className="text-sm text-gray-500">Distribution of grades across all examinations</p>
+              </div>
+              <TrendingUp className="w-6 h-6 text-indigo-600" />
+              </div>
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={gradeDistributionData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="grade" stroke="#6b7280" />
+                <YAxis stroke="#6b7280" />
+                <Tooltip
+                  formatter={(value) => [`${value} students`, 'Count']}
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
+                />
+                <Legend />
+                <Bar dataKey="count" fill="#8884d8" radius={[8, 8, 0, 0]}>
+                  {gradeDistributionData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-3 bg-green-50 rounded-lg">
+                <p className="text-xs text-gray-600 mb-1">A Grades</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {(gradeDistributionData.filter(g => g.grade.startsWith('A')).reduce((sum, g) => sum + g.count, 0))}
+                </p>
+              </div>
+              <div className="text-center p-3 bg-blue-50 rounded-lg">
+                <p className="text-xs text-gray-600 mb-1">B Grades</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {(gradeDistributionData.filter(g => g.grade.startsWith('B')).reduce((sum, g) => sum + g.count, 0))}
+                </p>
+              </div>
+              <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                <p className="text-xs text-gray-600 mb-1">C Grades</p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {(gradeDistributionData.filter(g => g.grade.startsWith('C')).reduce((sum, g) => sum + g.count, 0))}
+                </p>
+              </div>
+              <div className="text-center p-3 bg-red-50 rounded-lg">
+                <p className="text-xs text-gray-600 mb-1">D & F Grades</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {(gradeDistributionData.filter(g => g.grade === 'D' || g.grade === 'F').reduce((sum, g) => sum + g.count, 0))}
+                </p>
+              </div>
             </div>
-          </div>
+          </Card>
         )}
+
+        {/* Performance Comparison & Risk Analysis */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Performance vs Target Chart */}
+          {performanceComparisonData.length > 0 && (
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Performance vs Target</h3>
+                  <p className="text-sm text-gray-500">Current average vs expected thresholds</p>
+                </div>
+                <Activity className="w-6 h-6 text-green-600" />
+              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={performanceComparisonData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis type="number" stroke="#6b7280" domain={[0, 100]} />
+                  <YAxis type="category" dataKey="category" stroke="#6b7280" width={100} />
+                  <Tooltip
+                    formatter={(value) => [`${value.toFixed(1)}%`, 'Score']}
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
+                  />
+                  <Legend />
+                  <Bar dataKey="average" fill="#3b82f6" name="Current Average" radius={[0, 8, 8, 0]} />
+                  <Bar dataKey="target" fill="#10b981" name="Target" radius={[0, 8, 8, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="mt-4 space-y-2">
+                {performanceComparisonData.map((item, index) => (
+                  <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span className="text-sm font-medium text-gray-700">{item.category}</span>
+                    <span
+                      className={`text-sm font-semibold px-2 py-1 rounded ${
+                        item.status === 'Good'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}
+                    >
+                      {item.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Risk Level Distribution */}
+          {riskLevelData.length > 0 && (
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Student Risk Distribution</h3>
+                  <p className="text-sm text-gray-500">Risk categorization across all students</p>
+                </div>
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={riskLevelData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={true}
+                    label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {riskLevelData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value} students`, 'Count']} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {riskLevelData.map((item, index) => (
+                  <div key={index} className="text-center p-2 rounded" style={{ backgroundColor: `${item.color}20` }}>
+                    <p className="text-xs text-gray-600 mb-1">{item.name}</p>
+                    <p className="text-xl font-bold" style={{ color: item.color }}>
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
       </div>
 
       {/* High-Risk Students Table */}

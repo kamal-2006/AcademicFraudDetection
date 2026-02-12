@@ -2,6 +2,8 @@
 
 A React-based frontend application for the Intelligent Academic Fraud Detection System, built with Vite and Tailwind CSS.
 
+> **📖 For complete project documentation, setup instructions, and API reference, see the [main README](../README.md)**
+
 ## Features
 
 -  **Dashboard** - Overview of fraud detection statistics and trends
