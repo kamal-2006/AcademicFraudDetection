@@ -12,6 +12,9 @@ import ExamPerformance from './pages/ExamPerformance';
 import Plagiarism from './pages/Plagiarism';
 import FraudReports from './pages/FraudReports';
 import FraudReportDetail from './pages/FraudReportDetail';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 
 // Layout component for authenticated pages
@@ -33,13 +36,27 @@ function App() {
   return (
     <AuthProvider>
       <Routes>
-        {/* All Routes */}
+        {/* Public Routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        {/* Protected Routes */}
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
               <AppLayout>
                 <Dashboard />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Profile />
               </AppLayout>
             </ProtectedRoute>
           }
@@ -105,8 +122,8 @@ function App() {
           }
         />
 
-        {/* Redirect root to dashboard */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        {/* Redirect root to login or dashboard */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
         {/* 404 - Not Found */}
         <Route path="*" element={<NotFound />} />

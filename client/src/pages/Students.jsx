@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Filter, Upload, X } from 'lucide-react';
+import { Search, Filter, Upload, X, ArrowUpDown } from 'lucide-react';
 import Card from '../components/Card';
 import Table from '../components/Table';
 import Button from '../components/Button';
@@ -17,17 +17,24 @@ const Students = () => {
   const [filterRisk, setFilterRisk] = useState('all');
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState('desc');
   const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchStudents();
-  }, []);
+  }, [sortBy, sortOrder]);
 
   const fetchStudents = async () => {
     try {
       setLoading(true);
       setError('');
-      const response = await api.get('/students');
+      const response = await api.get('/students', {
+        params: {
+          sortBy,
+          sortOrder,
+        },
+      });
       // API returns { success, data, pagination }
       setStudents(response.data.data || []);
     } catch (err) {
@@ -136,7 +143,14 @@ const Students = () => {
         },
       });
 
-      setSuccess(`Successfully uploaded ${response.data.summary.successful} students`);
+      const { summary } = response.data;
+      let successMsg = `Successfully uploaded ${summary.inserted} student(s)`;
+      
+      if (summary.duplicates > 0 || summary.validationErrors > 0) {
+        successMsg += ` (${summary.duplicates} duplicates, ${summary.validationErrors} validation errors)`;
+      }
+      
+      setSuccess(successMsg);
       setSelectedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -310,6 +324,36 @@ const Students = () => {
               <option value="medium">Medium Risk</option>
               <option value="high">High Risk</option>
               <option value="critical">Critical Risk</option>
+            </select>
+          </div>
+
+          {/* Sort By */}
+          <div className="filter-wrapper">
+            <ArrowUpDown className="filter-icon" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="filter-select"
+            >
+              <option value="createdAt">Date Added</option>
+              <option value="studentId">Student ID</option>
+              <option value="name">Name</option>
+              <option value="department">Department</option>
+              <option value="year">Year</option>
+              <option value="gpa">GPA</option>
+              <option value="attendance">Attendance</option>
+            </select>
+          </div>
+
+          {/* Sort Order */}
+          <div className="filter-wrapper">
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="filter-select"
+            >
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
             </select>
           </div>
         </div>

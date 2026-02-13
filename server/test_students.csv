@@ -1,0 +1,6 @@
+Student ID,Name,Email,Department,Year,GPA,Attendance
+STU101,Alice Johnson,alice.johnson@test.edu,Computer Science,2,3.5,85
+STU102,Bob Smith,bob.smith@test.edu,Engineering,1,3.2,78
+STU103,Carol Davis,carol.davis@test.edu,Mathematics,3,3.8,92
+STU104,David Wilson,david.wilson@test.edu,Physics,2,2.9,65
+STU105,Emma Brown,emma.brown@test.edu,Chemistry,4,3.6,88

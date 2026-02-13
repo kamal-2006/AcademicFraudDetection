@@ -19,46 +19,61 @@ const parseCSV = (buffer) => {
 };
 
 /**
+ * Normalize field name to find value in CSV record
+ */
+const findFieldValue = (record, fieldName) => {
+  // Define all possible variations for each field
+  const fieldMappings = {
+    studentId: ['studentId', 'student_id', 'Student ID', 'StudentID', 'STUDENT_ID', 'student id', 'ID', 'id'],
+    name: ['name', 'Name', 'NAME', 'student_name', 'Student Name', 'StudentName', 'STUDENT_NAME'],
+    email: ['email', 'Email', 'EMAIL', 'student_email', 'Student Email', 'E-mail', 'e-mail'],
+    department: ['department', 'Department', 'DEPARTMENT', 'dept', 'Dept', 'DEPT'],
+    year: ['year', 'Year', 'YEAR', 'academic_year', 'Academic Year', 'Year Level', 'year level'],
+    gpa: ['gpa', 'GPA', 'Gpa', 'grade', 'Grade', 'GRADE'],
+    attendance: ['attendance', 'Attendance', 'ATTENDANCE', 'Attendance %', 'attendance %', 'Attendance Percentage'],
+  };
+
+  const variations = fieldMappings[fieldName] || [fieldName];
+  
+  for (const variation of variations) {
+    if (record[variation] !== undefined && record[variation] !== null && record[variation] !== '') {
+      return String(record[variation]).trim();
+    }
+  }
+  
+  return null;
+};
+
+/**
  * Validate and normalize CSV data
  */
 const validateStudentData = (data) => {
   const errors = [];
   const validRecords = [];
-  const requiredFields = [
-    'studentId',
-    'name',
-    'email',
-    'department',
-    'year',
-    'gpa',
-    'attendance',
-  ];
+  const requiredFields = ['studentId', 'name', 'email', 'department', 'year', 'gpa', 'attendance'];
+
+  // Log CSV headers for debugging
+  if (data.length > 0) {
+    console.log('=========== CSV VALIDATION DEBUG ===========');
+    console.log('Total rows in CSV:', data.length);
+    console.log('CSV Headers detected:', Object.keys(data[0]));
+    console.log('First row data:', JSON.stringify(data[0], null, 2));
+    console.log('===========================================');
+  }
 
   data.forEach((record, index) => {
     const rowNumber = index + 2; // +2 because row 1 is header
     const recordErrors = [];
+    const fieldValues = {};
 
-    // Check for missing required fields
+    // Extract all required fields using flexible matching
     requiredFields.forEach((field) => {
-      // Handle case-insensitive and various naming conventions
-      const fieldVariations = [
-        field,
-        field.toLowerCase(),
-        field.toUpperCase(),
-        field.replace(/([A-Z])/g, '_$1').toLowerCase(),
-        field.replace(/([A-Z])/g, ' $1').trim(),
-      ];
-
-      let fieldValue = null;
-      for (const variation of fieldVariations) {
-        if (record[variation] !== undefined && record[variation] !== '') {
-          fieldValue = record[variation];
-          break;
-        }
-      }
-
-      if (!fieldValue) {
+      const value = findFieldValue(record, field);
+      if (!value) {
         recordErrors.push(`Missing required field: ${field}`);
+        console.log(`Row ${rowNumber}: Missing field '${field}'. Available keys:`, Object.keys(record));
+      } else {
+        fieldValues[field] = value;
       }
     });
 
@@ -70,50 +85,25 @@ const validateStudentData = (data) => {
       return;
     }
 
-    // Normalize field names (handle different CSV formats)
+    // Normalize and parse field values
     const normalizedRecord = {
-      studentId:
-        record.studentId ||
-        record.student_id ||
-        record['Student ID'] ||
-        record.StudentID,
-      name:
-        record.name ||
-        record.Name ||
-        record.student_name ||
-        record['Student Name'],
-      email: (
-        record.email ||
-        record.Email ||
-        record.student_email ||
-        record['Student Email']
-      )?.toLowerCase(),
-      department:
-        record.department ||
-        record.Department ||
-        record.dept ||
-        record.Dept,
-      year: parseInt(
-        record.year || record.Year || record.academic_year || record['Academic Year']
-      ),
-      gpa: parseFloat(record.gpa || record.GPA || record.grade || record.Grade),
-      attendance: parseFloat(
-        record.attendance || record.Attendance || record['Attendance %']
-      ),
-      riskLevel:
-        record.riskLevel ||
-        record.risk_level ||
-        record['Risk Level'] ||
-        'Low',
+      studentId: fieldValues.studentId,
+      name: fieldValues.name,
+      email: fieldValues.email.toLowerCase(),
+      department: fieldValues.department,
+      year: parseInt(fieldValues.year),
+      gpa: parseFloat(fieldValues.gpa),
+      attendance: parseFloat(fieldValues.attendance),
+      riskLevel: findFieldValue(record, 'riskLevel') || 'Low',
     };
 
     // Validate data types and ranges
-    if (isNaN(normalizedRecord.year) || normalizedRecord.year < 1 || normalizedRecord.year > 5) {
-      recordErrors.push('Year must be a number between 1 and 5');
+    if (isNaN(normalizedRecord.year) || normalizedRecord.year < 1 || normalizedRecord.year > 10) {
+      recordErrors.push(`Year must be a number between 1 and 10 (got: ${fieldValues.year})`);
     }
 
-    if (isNaN(normalizedRecord.gpa) || normalizedRecord.gpa < 0 || normalizedRecord.gpa > 4) {
-      recordErrors.push('GPA must be a number between 0 and 4');
+    if (isNaN(normalizedRecord.gpa) || normalizedRecord.gpa < 0 || normalizedRecord.gpa > 5) {
+      recordErrors.push(`GPA must be a number between 0 and 5 (got: ${fieldValues.gpa})`);
     }
 
     if (
@@ -141,15 +131,84 @@ const validateStudentData = (data) => {
     if (recordErrors.length > 0) {
       errors.push({
         row: rowNumber,
-        studentId: normalizedRecord.studentId,
+        studentId: normalizedRecord.studentId || 'Unknown',
         errors: recordErrors,
       });
+      console.log(`Row ${rowNumber} FAILED validation:`, recordErrors);
     } else {
       validRecords.push(normalizedRecord);
+      console.log(`Row ${rowNumber} PASSED validation`);
     }
   });
 
+  console.log(`\n=== VALIDATION SUMMARY ===`);
+  console.log(`Valid records: ${validRecords.length}`);
+  console.log(`Invalid records: ${errors.length}`);
+  console.log(`=========================\n`);
+
   return { validRecords, errors };
+};
+
+/**
+ * Debug endpoint to test CSV parsing without saving
+ * POST /api/students/debug-csv
+ */
+exports.debugCSV = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please upload a CSV file',
+      });
+    }
+
+    console.log('📁 File received:', req.file.originalname);
+    console.log('📊 File size:', req.file.size, 'bytes');
+    console.log('📝 File mimetype:', req.file.mimetype);
+
+    // Parse CSV
+    const csvData = await parseCSV(req.file.buffer);
+    
+    console.log('✅ CSV parsed successfully');
+    console.log('📋 Total rows:', csvData.length);
+    
+    if (csvData.length > 0) {
+      console.log('🔑 Headers:', Object.keys(csvData[0]));
+      console.log('📄 First row:', csvData[0]);
+    }
+
+    // Validate data
+    const { validRecords, errors: validationErrors } = validateStudentData(csvData);
+
+    return res.json({
+      success: true,
+      message: 'CSV debug information',
+      file: {
+        name: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+      },
+      parsing: {
+        totalRows: csvData.length,
+        headers: csvData.length > 0 ? Object.keys(csvData[0]) : [],
+        firstRow: csvData[0] || null,
+      },
+      validation: {
+        validRecords: validRecords.length,
+        invalidRecords: validationErrors.length,
+        errors: validationErrors,
+        sampleValidRecord: validRecords[0] || null,
+      },
+    });
+  } catch (error) {
+    console.error('❌ CSV Debug Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error processing CSV file',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    });
+  }
 };
 
 /**
@@ -180,10 +239,13 @@ exports.uploadCSV = async (req, res) => {
       validateStudentData(csvData);
 
     if (validRecords.length === 0) {
+      console.error('❌ No valid records found. Validation errors:', JSON.stringify(validationErrors, null, 2));
       return res.status(400).json({
         success: false,
-        message: 'No valid records found in CSV file',
+        message: 'No valid records found in CSV file. Please check the format and data.',
+        totalRows: csvData.length,
         errors: validationErrors,
+        hint: 'Check server console for detailed debugging information',
       });
     }
 

@@ -59,70 +59,158 @@
 .navbar-actions {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: 0.5rem;
 }
 
-.navbar-user {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  padding-left: var(--spacing-md);
-  border-left: 1px solid var(--border-color);
-}
-
-.navbar-avatar {
+/* Navbar Icon Buttons */
+.navbar-icon-btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  background-color: var(--primary-light);
-  color: var(--primary-color);
-  border-radius: var(--border-radius-full);
-  font-weight: var(--font-weight-semibold);
-}
-
-.navbar-user-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.navbar-user-name {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--text-primary);
-  line-height: 1.2;
-}
-
-.navbar-user-role {
-  font-size: var(--font-size-xs);
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0.5rem;
   color: var(--text-secondary);
-  line-height: 1.2;
-}
-
-.notification-icon {
-  position: relative;
-  padding: var(--spacing-sm);
-  color: var(--text-secondary);
+  background: none;
+  border: none;
   border-radius: var(--border-radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
-.notification-icon:hover {
+.navbar-icon-btn:hover {
   background-color: var(--bg-tertiary);
   color: var(--text-primary);
 }
 
+.navbar-icon-btn:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.logout-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color, #dc2626);
+}
+
 .notification-badge {
   position: absolute;
-  top: 0.25rem;
-  right: 0.25rem;
-  width: 0.5rem;
-  height: 0.5rem;
+  top: 0.35rem;
+  right: 0.35rem;
+  width: 0.45rem;
+  height: 0.45rem;
   background-color: var(--danger-color);
   border: 2px solid var(--bg-primary);
   border-radius: var(--border-radius-full);
+}
+
+/* Profile Dropdown */
+.profile-dropdown-container {
+  position: relative;
+}
+
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 280px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  animation: dropdownSlide 0.2s ease;
+}
+
+@keyframes dropdownSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.profile-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 1rem;
+}
+
+.profile-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  border-radius: var(--border-radius-full);
+  flex-shrink: 0;
+}
+
+.profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-email {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-dropdown-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 0;
+}
+
+.profile-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+}
+
+.profile-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.profile-role-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.profile-role-badge.admin {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+}
+
+.profile-role-badge.faculty {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
 }
 
 /* Sidebar */
@@ -138,6 +226,8 @@
   overflow-x: hidden;
   transition: width var(--transition-base), transform var(--transition-base);
   z-index: 900;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Collapsed sidebar state (desktop) */

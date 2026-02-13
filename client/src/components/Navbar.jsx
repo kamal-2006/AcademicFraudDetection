@@ -1,9 +1,34 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Bell, User, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useState, useEffect, useRef } from 'react';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowProfileDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const toggleProfileDropdown = () => {
+    setShowProfileDropdown(!showProfileDropdown);
+  };
 
   return (
     <nav className="navbar">
@@ -27,34 +52,54 @@ const Navbar = () => {
           <h1 className="navbar-title">IAFDS</h1>
         </Link>
 
-        {/* Right side - User info and actions */}
+        {/* Right side - User actions */}
         <div className="navbar-actions">
           {/* Notifications */}
-          <button className="notification-icon" title="Notifications">
+          <button className="navbar-icon-btn" title="Notifications">
             <Bell size={20} />
             <span className="notification-badge"></span>
           </button>
 
-          {/* User Menu */}
-          <div className="navbar-user">
-            <div className="navbar-avatar">
-              <User size={16} />
-            </div>
-            <div className="navbar-user-info">
-              <span className="navbar-user-name">{user?.name || 'Admin User'}</span>
-              <span className="navbar-user-role">{user?.role || 'Administrator'}</span>
-            </div>
-
-            {/* Logout Button */}
-            <button
-              onClick={logout}
-              className="notification-icon"
-              title="Logout"
-              style={{ color: 'var(--danger-color)' }}
+          {/* Profile Dropdown */}
+          <div className="profile-dropdown-container" ref={dropdownRef}>
+            <button 
+              className="navbar-icon-btn" 
+              title="Profile"
+              onClick={toggleProfileDropdown}
             >
-              <LogOut size={20} />
+              <User size={20} />
             </button>
+
+            {showProfileDropdown && (
+              <div className="profile-dropdown">
+                <div className="profile-dropdown-header">
+                  <div className="profile-avatar">
+                    <User size={16} />
+                  </div>
+                  <div className="profile-info">
+                    <div className="profile-name">{user?.name || 'User'}</div>
+                    <div className="profile-email">{user?.email || 'user@example.com'}</div>
+                  </div>
+                </div>
+                <div className="profile-dropdown-divider"></div>
+                <div className="profile-dropdown-item">
+                  <span className="profile-label">Role</span>
+                  <span className={`profile-role-badge ${user?.role}`}>
+                    {user?.role === 'admin' ? 'Admin' : 'Faculty'}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="navbar-icon-btn logout-btn"
+            title="Logout"
+          >
+            <LogOut size={20} />
+          </button>
         </div>
       </div>
     </nav>

@@ -11,6 +11,14 @@ router.post(
   studentController.uploadCSV
 );
 
+// Debug CSV (test parsing without saving)
+router.post(
+  '/debug-csv',
+  upload.single('file'),
+  handleMulterError,
+  studentController.debugCSV
+);
+
 // Get all students with search and filter
 router.get('/', studentController.getStudents);
 
