@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, FileText, TrendingUp, TrendingDown, Award } from 'lucide-react';
+import { Search, Filter, FileText, TrendingUp, TrendingDown, Award, Download, Plus, BarChart3 } from 'lucide-react';
 import Card from '../components/Card';
 import Table from '../components/Table';
 import Loading from '../components/Loading';
 import Alert from '../components/Alert';
+import Button from '../components/Button';
+import { StatCard } from '../components/Card';
 import { examService } from '../api/services';
 
 const ExamPerformance = () => {
@@ -174,58 +176,51 @@ const ExamPerformance = () => {
     <div className="exam-container">
       {/* Page Header */}
       <div className="page-header">
-        <h1 className="page-title">Exam Performance</h1>
-        <p className="page-description">Monitor exam scores and student performance</p>
+        <div>
+          <h1 className="page-title">Exam Performance Analysis</h1>
+          <p className="page-description">Monitor exam scores and student performance</p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="secondary" icon={Download}>
+            Export Results
+          </Button>
+          <Button variant="primary" icon={Plus}>
+            Add Exam
+          </Button>
+        </div>
       </div>
 
       {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
-      {/* Summary Cards */}
+      {/* Summary Statistics Cards */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Exams</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalExams || 0}</p>
-              </div>
-              <FileText className="w-8 h-8 text-blue-600" />
-            </div>
-          </Card>
-
-          <Card className="p-6 border-l-4 border-purple-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Average Score</p>
-                <p className="text-3xl font-bold text-purple-600 mt-2">
-                  {stats.avgPercentage?.toFixed(1)}%
-                </p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-purple-600" />
-            </div>
-          </Card>
-
-          <Card className="p-6 border-l-4 border-green-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Passed</p>
-                <p className="text-3xl font-bold text-green-600 mt-2">{stats.passCount || 0}</p>
-                <p className="text-xs text-gray-500 mt-1">{stats.passRate?.toFixed(1)}% pass rate</p>
-              </div>
-              <Award className="w-8 h-8 text-green-600" />
-            </div>
-          </Card>
-
-          <Card className="p-6 border-l-4 border-red-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Failed</p>
-                <p className="text-3xl font-bold text-red-600 mt-2">{stats.failCount || 0}</p>
-                <p className="text-xs text-gray-500 mt-1">Require attention</p>
-              </div>
-              <TrendingDown className="w-8 h-8 text-red-600" />
-            </div>
-          </Card>
+          <StatCard
+            title="Total Exams"
+            value={stats.totalExams || 0}
+            icon={FileText}
+            color="primary"
+          />
+          <StatCard
+            title="Average Score"
+            value={`${stats.avgPercentage?.toFixed(1)}%`}
+            icon={BarChart3}
+            color="info"
+          />
+          <StatCard
+            title="Passed Exams"
+            value={stats.passCount || 0}
+            subtitle={`${stats.passRate?.toFixed(1)}% pass rate`}
+            icon={Award}
+            color="success"
+          />
+          <StatCard
+            title="Failed Exams"
+            value={stats.failCount || 0}
+            subtitle="Require attention"
+            icon={TrendingDown}
+            color="danger"
+          />
         </div>
       )}
 

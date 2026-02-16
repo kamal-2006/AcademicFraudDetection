@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Copy, AlertTriangle } from 'lucide-react';
+import { Copy, AlertTriangle, Search, Filter, Download, FileText, Shield, Users, TrendingUp } from 'lucide-react';
 import Card from '../components/Card';
 import Table from '../components/Table';
 import Loading from '../components/Loading';
 import Alert from '../components/Alert';
+import Button from '../components/Button';
+import { StatCard } from '../components/Card';
 import api from '../api/axios';
 
 const Plagiarism = () => {
   const [plagiarismData, setPlagiarismData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
 
   useEffect(() => {
     fetchPlagiarismData();
@@ -148,9 +152,30 @@ const Plagiarism = () => {
   ];
 
   const criticalCases = plagiarismData.filter((record) => record.similarity >= 80);
+  const highRiskCases = plagiarismData.filter((record) => record.similarity >= 60 && record.similarity < 80);
+  const avgSimilarity = plagiarismData.length > 0
+    ? (plagiarismData.reduce((sum, record) => sum + record.similarity, 0) / plagiarismData.length)
+    : 0;
   const highCases = plagiarismData.filter(
     (record) => record.similarity >= 60 && record.similarity < 80
   );
+
+  // Apply filters
+  const filteredPlagiarismData = plagiarismData.filter((record) => {
+    const matchesSearch =
+      record.studentId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.assignmentName?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesFilter =
+      filterStatus === 'all' ||
+      (filterStatus === 'critical' && record.similarity >= 80) ||
+      (filterStatus === 'high' && record.similarity >= 60 && record.similarity < 80) ||
+      (filterStatus === 'medium' && record.similarity >= 30 && record.similarity < 60) ||
+      (filterStatus === 'low' && record.similarity < 30);
+
+    return matchesSearch && matchesFilter;
+  });
 
   if (loading) {
     return <Loading fullScreen />;
@@ -159,66 +184,58 @@ const Plagiarism = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Assignment Plagiarism</h1>
-        <p className="text-gray-600 mt-2">Detect and review assignment plagiarism cases</p>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Assignment Plagiarism Detection</h1>
+          <p className="page-description">Detect and review assignment plagiarism cases</p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="secondary" icon={Download}>
+            Export Report
+          </Button>
+          <Button variant="outline" icon={Shield}>
+            Settings
+          </Button>
+        </div>
       </div>
 
       {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Submissions</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{plagiarismData.length}</p>
-            </div>
-            <Copy className="w-8 h-8 text-blue-600" />
-          </div>
-        </Card>
-
-        <Card className="p-6 border-l-4 border-red-400">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Critical</p>
-              <p className="text-3xl font-bold text-red-600 mt-2">{criticalCases.length}</p>
-              <p className="text-xs text-gray-500 mt-1">≥80% similarity</p>
-            </div>
-            <AlertTriangle className="w-8 h-8 text-red-600" />
-          </div>
-        </Card>
-
-        <Card className="p-6 border-l-4 border-orange-400">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">High Risk</p>
-              <p className="text-3xl font-bold text-orange-600 mt-2">{highCases.length}</p>
-              <p className="text-xs text-gray-500 mt-1">60-79% similarity</p>
-            </div>
-            <AlertTriangle className="w-8 h-8 text-orange-600" />
-          </div>
-        </Card>
-
-        <Card className="p-6 border-l-4 border-green-400">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Acceptable</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">
-                {plagiarismData.length - criticalCases.length - highCases.length}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">&lt;60% similarity</p>
-            </div>
-            <Copy className="w-8 h-8 text-green-600" />
-          </div>
-        </Card>
+      {/* Summary Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Total Submissions"
+          value={plagiarismData.length}
+          icon={FileText}
+          color="primary"
+        />
+        <StatCard
+          title="Critical Cases"
+          value={criticalCases.length}
+          subtitle="&ge;80% similarity"
+          icon={AlertTriangle}
+          color="danger"
+        />
+        <StatCard
+          title="High Risk"
+          value={highRiskCases.length}
+          subtitle="60-79% similarity"
+          icon={AlertTriangle}
+          color="warning"
+        />
+        <StatCard
+          title="Avg Similarity"
+          value={`${avgSimilarity.toFixed(1)}%`}
+          icon={TrendingUp}
+          color="info"
+        />
       </div>
 
       {/* Alert for critical cases */}
       {criticalCases.length > 0 && (
         <Alert
           type="error"
-          message={`${criticalCases.length} assignment(s) have extremely high similarity (≥80%) and require immediate investigation.`}
+          message={`${criticalCases.length} assignment(s) have extremely high similarity (&ge;80%) and require immediate investigation.`}
         />
       )}
 
@@ -233,12 +250,46 @@ const Plagiarism = () => {
         </ul>
       </Card>
 
+      {/* Search and Filter */}
+      <Card className="p-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search by student ID, name, or assignment..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex gap-3">
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
+              >
+                <option value="all">All Levels</option>
+                <option value="critical">Critical (&ge;80%)</option>
+                <option value="high">High Risk (60-79%)</option>
+                <option value="medium">Medium (30-59%)</option>
+                <option value="low">Low (&lt;30%)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* Plagiarism Table */}
       <Card>
         <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Plagiarism Reports</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Plagiarism Reports ({filteredPlagiarismData.length})
+          </h2>
         </div>
-        <Table columns={columns} data={plagiarismData} />
+        <Table columns={columns} data={filteredPlagiarismData} />
       </Card>
     </div>
   );

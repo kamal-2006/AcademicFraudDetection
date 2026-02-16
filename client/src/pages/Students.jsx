@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Filter, Upload, X, ArrowUpDown } from 'lucide-react';
+import { Search, Filter, Upload, X, ArrowUpDown, Users, TrendingUp, AlertTriangle, Award, Download, Plus } from 'lucide-react';
 import Card from '../components/Card';
 import Table from '../components/Table';
 import Button from '../components/Button';
 import Loading from '../components/Loading';
 import Alert from '../components/Alert';
-import { RiskBadge } from '../components/Card';
+import { RiskBadge, StatCard } from '../components/Card';
 import api from '../api/axios';
 
 const Students = () => {
@@ -192,6 +192,14 @@ const Students = () => {
     return matchesSearch && matchesFilter;
   });
 
+  // Calculate statistics
+  const stats = {
+    total: students.length,
+    highRisk: students.filter(s => s.riskLevel === 'critical' || s.riskLevel === 'high').length,
+    avgGPA: students.length > 0 ? (students.reduce((sum, s) => sum + s.gpa, 0) / students.length) : 0,
+    avgAttendance: students.length > 0 ? (students.reduce((sum, s) => sum + s.attendance, 0) / students.length) : 0,
+  };
+
   const columns = [
     {
       header: 'Student ID',
@@ -234,12 +242,50 @@ const Students = () => {
     <div className="students-container">
       {/* Page Header */}
       <div className="page-header">
-        <h1 className="page-title">Student Management</h1>
-        <p className="page-description">View and manage student information</p>
+        <div>
+          <h1 className="page-title">Student Management</h1>
+          <p className="page-description">View and manage student information</p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="secondary" icon={Download}>
+            Export Data
+          </Button>
+          <Button variant="primary" icon={Plus}>
+            Add Student
+          </Button>
+        </div>
       </div>
 
       {error && <Alert type="error" message={error} onClose={() => setError('')} />}
       {success && <Alert type="success" message={success} onClose={() => setSuccess('')} />}
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <StatCard
+          title="Total Students"
+          value={stats.total}
+          icon={Users}
+          color="primary"
+        />
+        <StatCard
+          title="High Risk Students"
+          value={stats.highRisk}
+          icon={AlertTriangle}
+          color="danger"
+        />
+        <StatCard
+          title="Average GPA"
+          value={stats.avgGPA.toFixed(2)}
+          icon={Award}
+          color="success"
+        />
+        <StatCard
+          title="Avg Attendance"
+          value={`${stats.avgAttendance.toFixed(1)}%`}
+          icon={TrendingUp}
+          color="info"
+        />
+      </div>
 
       {/* CSV Upload Section */}
       <div className="upload-section">

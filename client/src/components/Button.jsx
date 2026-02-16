@@ -6,6 +6,7 @@ const Button = ({
   size = 'md',
   disabled = false,
   fullWidth = false,
+  icon: Icon,
   className = '',
 }) => {
   const variantClass = {
@@ -29,8 +30,9 @@ const Button = ({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`btn ${variantClass} ${sizeClass} ${widthClass} ${className}`}
+      className={`btn ${variantClass} ${sizeClass} ${widthClass} ${className} flex items-center justify-center gap-2`}
     >
+      {Icon && <Icon className="w-4 h-4" />}
       {children}
     </button>
   );

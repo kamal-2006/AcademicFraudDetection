@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Eye, Filter } from 'lucide-react';
+import { AlertTriangle, Eye, Filter, Search, FileText, Clock, CheckCircle, XCircle, Plus, Download } from 'lucide-react';
 import Card from '../components/Card';
 import Table from '../components/Table';
 import Button from '../components/Button';
 import Loading from '../components/Loading';
 import Alert from '../components/Alert';
-import { RiskBadge } from '../components/Card';
+import { RiskBadge, StatCard } from '../components/Card';
 import { STATUS_COLORS } from '../utils/constants';
 import { formatDateTime } from '../utils/helpers';
 import api from '../api/axios';
@@ -225,54 +225,49 @@ const FraudReports = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Fraud Reports</h1>
-        <p className="text-gray-600 mt-2">Monitor and investigate fraud detection cases</p>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Fraud Reports</h1>
+          <p className="page-description">Monitor and investigate fraud detection cases</p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="secondary" icon={Download}>
+            Export Reports
+          </Button>
+          <Button variant="primary" icon={Plus}>
+            New Report
+          </Button>
+        </div>
       </div>
 
       {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Cases</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{reports.length}</p>
-            </div>
-            <AlertTriangle className="w-8 h-8 text-blue-600" />
-          </div>
-        </Card>
-
-        <Card className="p-6 border-l-4 border-red-400">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Critical</p>
-              <p className="text-3xl font-bold text-red-600 mt-2">{criticalCases.length}</p>
-            </div>
-            <AlertTriangle className="w-8 h-8 text-red-600" />
-          </div>
-        </Card>
-
-        <Card className="p-6 border-l-4 border-yellow-400">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Pending</p>
-              <p className="text-3xl font-bold text-yellow-600 mt-2">{pendingCases.length}</p>
-            </div>
-            <AlertTriangle className="w-8 h-8 text-yellow-600" />
-          </div>
-        </Card>
-
-        <Card className="p-6 border-l-4 border-blue-400">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Investigating</p>
-              <p className="text-3xl font-bold text-blue-600 mt-2">{investigatingCases.length}</p>
-            </div>
-            <AlertTriangle className="w-8 h-8 text-blue-600" />
-          </div>
-        </Card>
+      {/* Summary Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Total Cases"
+          value={reports.length}
+          icon={FileText}
+          color="primary"
+        />
+        <StatCard
+          title="Critical Cases"
+          value={criticalCases.length}
+          icon={AlertTriangle}
+          color="danger"
+        />
+        <StatCard
+          title="Pending Review"
+          value={pendingCases.length}
+          icon={Clock}
+          color="warning"
+        />
+        <StatCard
+          title="Under Investigation"
+          value={investigatingCases.length}
+          icon={Search}
+          color="info"
+        />
       </div>
 
       {/* Filters */}

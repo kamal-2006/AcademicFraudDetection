@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, Calendar, TrendingUp, TrendingDown, Users } from 'lucide-react';
+import { Search, Filter, Calendar, TrendingUp, TrendingDown, Users, AlertCircle, CheckCircle, XCircle, Download, Plus } from 'lucide-react';
 import Card from '../components/Card';
 import Table from '../components/Table';
 import Loading from '../components/Loading';
 import Alert from '../components/Alert';
+import Button from '../components/Button';
+import { StatCard } from '../components/Card';
 import { attendanceService } from '../api/services';
 
 const Attendance = () => {
@@ -134,59 +136,52 @@ const Attendance = () => {
     <div className="attendance-container">
       {/* Page Header */}
       <div className="page-header">
-        <h1 className="page-title">Attendance Monitoring</h1>
-        <p className="page-description">Track and monitor student attendance records</p>
+        <div>
+          <h1 className="page-title">Attendance Monitoring</h1>
+          <p className="page-description">Track and monitor student attendance records</p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="secondary" icon={Download}>
+            Export Report
+          </Button>
+          <Button variant="primary" icon={Plus}>
+            Add Record
+          </Button>
+        </div>
       </div>
 
       {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
-      {/* Summary Cards */}
+      {/* Summary Statistics Cards */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Average Attendance</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {stats.avgAttendance?.toFixed(1)}%
-                </p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-blue-600" />
-            </div>
-          </Card>
-
-          <Card className="p-6 border-l-4 border-green-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Regular Status</p>
-                <p className="text-3xl font-bold text-green-600 mt-2">{stats.regularCount || 0}</p>
-                <p className="text-xs text-gray-500 mt-1">≥75% attendance</p>
-              </div>
-              <Users className="w-8 h-8 text-green-600" />
-            </div>
-          </Card>
-
-          <Card className="p-6 border-l-4 border-yellow-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Warning Status</p>
-                <p className="text-3xl font-bold text-yellow-600 mt-2">{stats.warningCount || 0}</p>
-                <p className="text-xs text-gray-500 mt-1">60-74% attendance</p>
-              </div>
-              <TrendingDown className="w-8 h-8 text-yellow-600" />
-            </div>
-          </Card>
-
-          <Card className="p-6 border-l-4 border-red-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Critical Status</p>
-                <p className="text-3xl font-bold text-red-600 mt-2">{stats.criticalCount || 0}</p>
-                <p className="text-xs text-gray-500 mt-1">&lt;60% attendance</p>
-              </div>
-              <TrendingDown className="w-8 h-8 text-red-600" />
-            </div>
-          </Card>
+          <StatCard
+            title="Average Attendance"
+            value={`${stats.avgAttendance?.toFixed(1)}%`}
+            icon={TrendingUp}
+            color="primary"
+          />
+          <StatCard
+            title="Regular Status"
+            value={stats.regularCount || 0}
+            subtitle="≥75% attendance"
+            icon={CheckCircle}
+            color="success"
+          />
+          <StatCard
+            title="Warning Status"
+            value={stats.warningCount || 0}
+            subtitle="60-74% attendance"
+            icon={AlertCircle}
+            color="warning"
+          />
+          <StatCard
+            title="Critical Status"
+            value={stats.criticalCount || 0}
+            subtitle="<60% attendance"
+            icon={XCircle}
+            color="danger"
+          />
         </div>
       )}
 
