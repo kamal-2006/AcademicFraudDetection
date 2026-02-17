@@ -10,6 +10,7 @@ router.post('/logout', authController.logout);
 
 // Protected routes
 router.get('/profile', protect, authController.getProfile);
+router.get('/me', protect, authController.getProfile);
 
 // Admin only routes (for initial setup or protected admin creation)
 router.post('/create-admin', authController.createAdmin);
