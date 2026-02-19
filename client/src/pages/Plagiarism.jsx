@@ -22,83 +22,19 @@ const Plagiarism = () => {
   const fetchPlagiarismData = async () => {
     try {
       setLoading(true);
+      setError('');
       const response = await api.get('/plagiarism');
-      setPlagiarismData(response.data);
+      
+      // Handle API response structure
+      if (response.data.success && response.data.data) {
+        setPlagiarismData(response.data.data);
+      } else {
+        setPlagiarismData([]);
+      }
     } catch (err) {
       console.error('Error fetching plagiarism data:', err);
-      // Mock data if API fails
-      setPlagiarismData([
-        {
-          id: 1,
-          studentId: 'STU001',
-          name: 'John Doe',
-          assignmentName: 'Assignment 1 - Data Structures',
-          submittedDate: '2026-01-15',
-          similarity: 25,
-          matchedWith: 'Internet sources',
-          status: 'low',
-        },
-        {
-          id: 2,
-          studentId: 'STU002',
-          name: 'Jane Smith',
-          assignmentName: 'Project - Web Application',
-          submittedDate: '2026-01-18',
-          similarity: 68,
-          matchedWith: 'STU008 (Previous submission)',
-          status: 'medium',
-        },
-        {
-          id: 3,
-          studentId: 'STU003',
-          name: 'Mike Johnson',
-          assignmentName: 'Lab Report - Database Design',
-          submittedDate: '2026-01-20',
-          similarity: 92,
-          matchedWith: 'STU015, Internet sources',
-          status: 'critical',
-        },
-        {
-          id: 4,
-          studentId: 'STU004',
-          name: 'Sarah Williams',
-          assignmentName: 'Essay - Software Engineering',
-          submittedDate: '2026-01-22',
-          similarity: 18,
-          matchedWith: 'None significant',
-          status: 'low',
-        },
-        {
-          id: 5,
-          studentId: 'STU005',
-          name: 'David Brown',
-          assignmentName: 'Code Assignment - Algorithms',
-          submittedDate: '2026-01-25',
-          similarity: 87,
-          matchedWith: 'GitHub repository',
-          status: 'high',
-        },
-        {
-          id: 6,
-          studentId: 'STU006',
-          name: 'Emily Davis',
-          assignmentName: 'Research Paper - AI Ethics',
-          submittedDate: '2026-01-28',
-          similarity: 52,
-          matchedWith: 'Published papers',
-          status: 'medium',
-        },
-        {
-          id: 7,
-          studentId: 'STU007',
-          name: 'Robert Wilson',
-          assignmentName: 'Assignment 3 - IoT Systems',
-          submittedDate: '2026-02-01',
-          similarity: 95,
-          matchedWith: 'STU012, STU018',
-          status: 'critical',
-        },
-      ]);
+      setError(err.response?.data?.message || 'Failed to fetch plagiarism data. Please try again.');
+      setPlagiarismData([]);
     } finally {
       setLoading(false);
     }

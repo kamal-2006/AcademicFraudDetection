@@ -133,7 +133,7 @@ const Attendance = () => {
   }
 
   return (
-    <div className="attendance-container">
+    <div className="space-y-6">
       {/* Page Header */}
       <div className="page-header">
         <div>
@@ -194,7 +194,7 @@ const Attendance = () => {
       )}
 
       {/* Search and Filters */}
-      <div className="search-filter-section">
+      <Card className="p-4">
         <div className="search-filter-wrapper">
           {/* Search */}
           <div className="search-wrapper">
@@ -255,7 +255,7 @@ const Attendance = () => {
             </select>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Attendance Table */}
       <Card>

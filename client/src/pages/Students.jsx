@@ -239,7 +239,7 @@ const Students = () => {
   }
 
   return (
-    <div className="students-container">
+    <div className="space-y-6">
       {/* Page Header */}
       <div className="page-header">
         <div>
@@ -288,7 +288,7 @@ const Students = () => {
       </div>
 
       {/* CSV Upload Section */}
-      <div className="upload-section">
+      <Card className="p-6">
         <div className="upload-wrapper">
           <div className="upload-header">
             <Upload className="upload-icon" />
@@ -340,10 +340,10 @@ const Students = () => {
             </p>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Search and Filters */}
-      <div className="search-filter-section">
+      <Card className="p-4">
         <div className="search-filter-wrapper">
           {/* Search */}
           <div className="search-wrapper">
@@ -403,17 +403,23 @@ const Students = () => {
             </select>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Students Table */}
-      <div className="students-table-container">
-        <div className="students-table-header">
-          <h2 className="students-table-title">
+      <Card>
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">
             Students ({filteredStudents.length})
           </h2>
         </div>
-        <Table columns={columns} data={filteredStudents} />
-      </div>
+        {filteredStudents.length > 0 ? (
+          <Table columns={columns} data={filteredStudents} />
+        ) : (
+          <div className="p-8 text-center text-gray-500">
+            No students found. Try adjusting your filters.
+          </div>
+        )}
+      </Card>
     </div>
   );
 };

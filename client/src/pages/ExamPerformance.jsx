@@ -173,7 +173,7 @@ const ExamPerformance = () => {
   }
 
   return (
-    <div className="exam-container">
+    <div className="space-y-6">
       {/* Page Header */}
       <div className="page-header">
         <div>
@@ -233,7 +233,7 @@ const ExamPerformance = () => {
       )}
 
       {/* Search and Filters */}
-      <div className="search-filter-section">
+      <Card className="p-4">
         <div className="search-filter-wrapper">
           {/* Search */}
           <div className="search-wrapper">
@@ -310,7 +310,7 @@ const ExamPerformance = () => {
             </select>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Exam Performance Table */}
       <Card>
