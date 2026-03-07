@@ -24,13 +24,9 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Only allow faculty registration through public endpoint
-    if (role && role !== 'faculty') {
-      return res.status(403).json({
-        success: false,
-        message: 'Registration is only available for faculty members',
-      });
-    }
+    // Only allow student or faculty registration through public endpoint
+    const allowedRoles = ['student', 'faculty'];
+    const assignedRole = role && allowedRoles.includes(role.toLowerCase()) ? role.toLowerCase() : 'student';
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -46,7 +42,9 @@ exports.register = async (req, res) => {
       name,
       email,
       password,
-      role: 'faculty', // Force faculty role for public registration
+      role: assignedRole,
+      studentId: req.body.studentId || null,
+      department: req.body.department || null,
     });
 
     // Generate token
@@ -61,6 +59,8 @@ exports.register = async (req, res) => {
           name: user.name,
           email: user.email,
           role: user.role,
+          studentId: user.studentId,
+          department: user.department,
         },
         token,
       },
@@ -123,6 +123,8 @@ exports.login = async (req, res) => {
           name: user.name,
           email: user.email,
           role: user.role,
+          studentId: user.studentId,
+          department: user.department,
         },
         token,
       },
@@ -184,6 +186,8 @@ exports.getProfile = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        studentId: user.studentId,
+        department: user.department,
         createdAt: user.createdAt,
       },
     });

@@ -5,12 +5,12 @@
 /* CSS Variables for consistent theming */
 :root {
   /* Colors */
-  --primary-color: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-light: #dbeafe;
+  --primary-color: #1ca776;       /* violet-700  — was blue #2563eb */
+  --primary-hover: #34b2c3;       /* violet-800 */
+  --primary-light: #ede9fe;       /* violet-100 */
   
-  --secondary-color: #64748b;
-  --secondary-hover: #475569;
+  --secondary-color: #db4fbf;
+  --secondary-hover: #bd7c8c;
   
   --success-color: #10b981;
   --warning-color: #f59e0b;

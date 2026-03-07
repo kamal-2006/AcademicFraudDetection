@@ -12,12 +12,16 @@ import ExamPerformance from './pages/ExamPerformance';
 import Plagiarism from './pages/Plagiarism';
 import FraudReports from './pages/FraudReports';
 import FraudReportDetail from './pages/FraudReportDetail';
+import ProctoringLogs from './pages/ProctoringLogs';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
+import StudentLayout from './pages/StudentLayout';
+import StudentHome from './pages/StudentHome';
+import TakeTest from './pages/TakeTest';
 
-// Layout component for authenticated pages
+// Layout component for faculty/admin authenticated pages
 const AppLayout = ({ children }) => {
   return (
     <div className="app-container">
@@ -36,15 +40,28 @@ function App() {
   return (
     <AuthProvider>
       <Routes>
-        {/* Public Routes */}
-        <Route path="/login" element={<Login />} />
+        {/* ── Public Routes ── */}
+        <Route path="/login"    element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* Protected Routes */}
+        {/* ── Student Portal (nested routes) ── */}
+        <Route
+          path="/student-dashboard"
+          element={
+            <ProtectedRoute roles={['student']}>
+              <StudentLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<StudentHome />} />
+          <Route path="test" element={<TakeTest />} />
+        </Route>
+
+        {/* ── Faculty / Admin Routes ── */}
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={['faculty', 'admin']}>
               <AppLayout>
                 <Dashboard />
               </AppLayout>
@@ -64,7 +81,7 @@ function App() {
         <Route
           path="/students"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={['faculty', 'admin']}>
               <AppLayout>
                 <Students />
               </AppLayout>
@@ -74,7 +91,7 @@ function App() {
         <Route
           path="/attendance"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={['faculty', 'admin']}>
               <AppLayout>
                 <Attendance />
               </AppLayout>
@@ -84,7 +101,7 @@ function App() {
         <Route
           path="/exams"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={['faculty', 'admin']}>
               <AppLayout>
                 <ExamPerformance />
               </AppLayout>
@@ -94,7 +111,7 @@ function App() {
         <Route
           path="/plagiarism"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={['faculty', 'admin']}>
               <AppLayout>
                 <Plagiarism />
               </AppLayout>
@@ -104,7 +121,7 @@ function App() {
         <Route
           path="/fraud-reports"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={['faculty', 'admin']}>
               <AppLayout>
                 <FraudReports />
               </AppLayout>
@@ -114,18 +131,28 @@ function App() {
         <Route
           path="/fraud-reports/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={['faculty', 'admin']}>
               <AppLayout>
                 <FraudReportDetail />
               </AppLayout>
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/proctoring"
+          element={
+            <ProtectedRoute roles={['faculty', 'admin']}>
+              <AppLayout>
+                <ProctoringLogs />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
 
-        {/* Redirect root to login or dashboard */}
+        {/* ── Root redirect ── */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* 404 - Not Found */}
+        {/* ── 404 ── */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AuthProvider>
@@ -133,3 +160,4 @@ function App() {
 }
 
 export default App;
+

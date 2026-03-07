@@ -2,6 +2,236 @@ const Student = require('../models/Student');
 const FraudReport = require('../models/FraudReport');
 const Attendance = require('../models/Attendance');
 const ExamPerformance = require('../models/ExamPerformance');
+const TestSession = require('../models/TestSession');
+const TestFraudLog = require('../models/TestFraudLog');
+
+/**
+ * @desc    Get consolidated dashboard statistics
+ * @route   GET /api/dashboard/stats
+ * @access  Private (admin / faculty)
+ */
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const [
+      totalStudents,
+      totalFraudReports,
+      activeInvestigations,
+      recentFraudReports,
+      totalTestsCompleted,
+      flaggedSessions,
+      terminatedSessions,
+      testScoreAgg,
+      malpracticeLogCount,
+      fraudByType,
+      recentFlaggedSessions,
+    ] = await Promise.all([
+      Student.countDocuments(),
+      FraudReport.countDocuments(),
+      FraudReport.countDocuments({ status: { $in: ['Pending', 'Under Review'] } }),
+      FraudReport.countDocuments({ detectionTimestamp: { $gte: sevenDaysAgo } }),
+      TestSession.countDocuments({ status: { $in: ['submitted', 'flagged'] } }),
+      TestSession.countDocuments({ status: 'flagged' }),
+      TestSession.countDocuments({ terminated: true }),
+      TestSession.aggregate([
+        { $match: { status: { $in: ['submitted', 'flagged'] } } },
+        {
+          $group: {
+            _id: null,
+            avgScore: { $avg: '$percentageScore' },
+            passCount: { $sum: { $cond: [{ $gte: ['$percentageScore', 50] }, 1, 0] } },
+            failCount: { $sum: { $cond: [{ $lt: ['$percentageScore', 50] }, 1, 0] } },
+            total: { $sum: 1 },
+          },
+        },
+      ]),
+      // Malpractice logs = fraud events that carry points (i.e. real violations)
+      TestFraudLog.countDocuments({ pointsAdded: { $gt: 0 } }),
+      // Fraud type breakdown from FraudReport
+      FraudReport.aggregate([
+        { $group: { _id: '$fraudType', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]),
+      // Last 8 flagged test sessions for activity table
+      TestSession.find({ status: 'flagged' })
+        .sort({ updatedAt: -1 })
+        .limit(8)
+        .populate('userId', 'name email studentId')
+        .select('userName userEmail fraudScore fraudCount percentageScore submittedAt status terminated'),
+    ]);
+
+    const perf = testScoreAgg[0] || { avgScore: 0, passCount: 0, failCount: 0, total: 0 };
+    const passRate = perf.total > 0 ? Math.round((perf.passCount / perf.total) * 100) : 0;
+
+    res.json({
+      success: true,
+      data: {
+        totalStudents,
+        totalTestsCompleted,
+        totalFraudAlerts: totalFraudReports,
+        malpracticeLogs: malpracticeLogCount,
+        flaggedSessions,
+        terminatedSessions,
+        activeInvestigations,
+        recentFraudReports,
+        testPerformance: {
+          avgScore: Math.round((perf.avgScore || 0) * 10) / 10,
+          passCount: perf.passCount,
+          failCount: perf.failCount,
+          flaggedCount: flaggedSessions,
+          passRate,
+        },
+        fraudByType,
+        recentFlaggedSessions,
+      },
+    });
+  } catch (error) {
+    console.error('Dashboard stats error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch dashboard statistics' });
+  }
+};
+
+/**
+ * @desc    Get monthly trend data for charts
+ * @route   GET /api/dashboard/trends
+ * @access  Private (admin / faculty)
+ */
+exports.getDashboardTrends = async (req, res) => {
+  try {
+    const months = Math.min(12, parseInt(req.query.months) || 6);
+    const since = new Date();
+    since.setMonth(since.getMonth() - months);
+
+    // Monthly fraud log events (violations with points)
+    const fraudTrend = await TestFraudLog.aggregate([
+      { $match: { createdAt: { $gte: since }, pointsAdded: { $gt: 0 } } },
+      {
+        $group: {
+          _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } },
+    ]);
+
+    // Monthly completed tests
+    const testsTrend = await TestSession.aggregate([
+      { $match: { submittedAt: { $gte: since }, status: { $in: ['submitted', 'flagged'] } } },
+      {
+        $group: {
+          _id: { year: { $year: '$submittedAt' }, month: { $month: '$submittedAt' } },
+          total: { $sum: 1 },
+          flagged: { $sum: { $cond: [{ $eq: ['$status', 'flagged'] }, 1, 0] } },
+          avgScore: { $avg: '$percentageScore' },
+        },
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } },
+    ]);
+
+    // Build a full month-label array so the chart always renders all months
+    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const makeKey = (y, m) => `${y}-${String(m).padStart(2, '0')}`;
+
+    const fraudMap = {};
+    fraudTrend.forEach((r) => {
+      fraudMap[makeKey(r._id.year, r._id.month)] = r.count;
+    });
+
+    const testsMap = {};
+    testsTrend.forEach((r) => {
+      testsMap[makeKey(r._id.year, r._id.month)] = {
+        total: r.total,
+        flagged: r.flagged,
+        avgScore: Math.round((r.avgScore || 0) * 10) / 10,
+      };
+    });
+
+    const combined = [];
+    for (let i = months - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = makeKey(d.getFullYear(), d.getMonth() + 1);
+      const label = `${MONTH_NAMES[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
+      combined.push({
+        month: label,
+        fraudEvents: fraudMap[key] || 0,
+        testsTotal: testsMap[key]?.total || 0,
+        testsFlagged: testsMap[key]?.flagged || 0,
+        avgScore: testsMap[key]?.avgScore || 0,
+      });
+    }
+
+    res.json({ success: true, data: combined });
+  } catch (error) {
+    console.error('Dashboard trends error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch dashboard trends' });
+  }
+};
+
+/**
+ * @desc    Get recent activities
+ * @route   GET /api/dashboard/recent-activities
+ * @access  Private
+ */
+exports.getRecentActivities = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    const recentFraudReports = await FraudReport.find()
+      .populate('student', 'studentId name email department')
+      .sort('-detectionTimestamp')
+      .limit(parseInt(limit));
+
+    const recentAttendance = await Attendance.find({ status: 'critical' })
+      .populate('student', 'studentId name email department')
+      .sort('-createdAt')
+      .limit(parseInt(limit));
+
+    const recentFailingExams = await ExamPerformance.find({ status: 'Fail' })
+      .populate('student', 'studentId name email department')
+      .sort('-examDate')
+      .limit(parseInt(limit));
+
+    res.json({
+      success: true,
+      data: { recentFraudReports, recentAttendance, recentFailingExams },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch recent activities' });
+  }
+};
+
+/**
+ * @desc    Get top high-risk students
+ * @route   GET /api/dashboard/high-risk-students
+ * @access  Private
+ */
+exports.getHighRiskStudents = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    const highRiskStudents = await Student.find({
+      riskLevel: { $in: ['Critical', 'High'] },
+    })
+      .sort({ riskLevel: -1, gpa: 1, attendance: 1 })
+      .limit(parseInt(limit));
+
+    const studentsWithFraudCounts = await Promise.all(
+      highRiskStudents.map(async (student) => {
+        const fraudCount = await FraudReport.countDocuments({ studentId: student.studentId });
+        return { ...student.toObject(), fraudReportCount: fraudCount };
+      })
+    );
+
+    res.json({ success: true, data: studentsWithFraudCounts });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch high-risk students' });
+  }
+};
+
 
 /**
  * @desc    Get dashboard statistics

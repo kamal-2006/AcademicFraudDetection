@@ -1,0 +1,10 @@
+# Core web framework
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# Computer vision & ML
+opencv-python-headless>=4.9.0
+mediapipe>=0.10.9
+
+# Numerical computing (transitive dep of OpenCV/MediaPipe — pin to compatible range)
+numpy>=1.24.0,<2.0.0

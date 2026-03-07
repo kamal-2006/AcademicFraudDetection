@@ -6,69 +6,61 @@ const AuthContext = createContext(null);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
 
+/** Role → landing path after successful login / registration */
+const landingPath = (role) => {
+  if (role === 'student') return '/student-dashboard';
+  return '/dashboard';      // faculty and admin go straight to main dashboard
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser]   = useState(null);
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const navigate = useNavigate();
 
-  // Load user from token on mount
+  // Restore session on mount
   useEffect(() => {
     const loadUser = async () => {
       const storedToken = localStorage.getItem('token');
-      
       if (storedToken) {
         try {
-          // Set token in axios headers
           api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-          
-          // Fetch user profile
           const response = await api.get('/auth/profile');
           setUser(response.data.data);
           setToken(storedToken);
-        } catch (error) {
-          console.error('Failed to load user:', error);
-          // Clear invalid token
+        } catch {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           delete api.defaults.headers.common['Authorization'];
         }
       }
-      
       setLoading(false);
     };
-
     loadUser();
   }, []);
+
+  const _storeSession = (newToken, userData) => {
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('user', JSON.stringify(userData));
+    api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+    setToken(newToken);
+    setUser(userData);
+  };
 
   const login = async (email, password) => {
     try {
       setLoading(true);
       const response = await api.post('/auth/login', { email, password });
-      
       const { token: newToken, user: userData } = response.data.data;
-
-      // Store token and user
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      // Set token in axios headers
-      api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-      
-      setToken(newToken);
-      setUser(userData);
+      _storeSession(newToken, userData);
       setLoading(false);
-
-      navigate('/dashboard');
+      navigate(landingPath(userData.role));
       return { success: true };
     } catch (error) {
-      console.error('Login error:', error);
       setLoading(false);
       return {
         success: false,
@@ -77,28 +69,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, password) => {
+  const register = async (name, email, password, role = 'student', extras = {}) => {
     try {
       setLoading(true);
-      const response = await api.post('/auth/register', { name, email, password });
-      
-      const { token: newToken, user: userData } = response.data.data;
-
-      // Store token and user
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      // Set token in axios headers
-      api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-      
-      setToken(newToken);
-      setUser(userData);
+      await api.post('/auth/register', { name, email, password, role, ...extras });
       setLoading(false);
-
-      navigate('/dashboard');
+      // Do NOT auto-login — caller must redirect to /login
       return { success: true };
     } catch (error) {
-      console.error('Registration error:', error);
       setLoading(false);
       return {
         success: false,
@@ -109,36 +87,26 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      // Call logout endpoint (optional)
       await api.post('/auth/logout');
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch {
+      // ignore API errors on logout
     } finally {
-      // Clear local storage and state
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       delete api.defaults.headers.common['Authorization'];
-      
       setToken(null);
       setUser(null);
-      
       navigate('/login');
     }
   };
 
-  const isAuthenticated = () => {
-    return !!user && !!token;
-  };
+  const isAuthenticated = () => !!user && !!token;
+  const hasRole = (...roles) => user && roles.includes(user.role);
 
-  const value = {
-    user,
-    token,
-    login,
-    register,
-    logout,
-    isAuthenticated,
-    loading,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, isAuthenticated, hasRole }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
+

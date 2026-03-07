@@ -1,644 +1,336 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, AlertTriangle, TrendingUp, Activity, Calendar, FileText } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { StatCard, AlertCard } from '../components/Card';
-import Card from '../components/Card';
+import {
+  Users, AlertTriangle, FileText, ShieldAlert,
+  TrendingUp, CheckCircle, XCircle, Clock,
+  RefreshCw, ChevronRight,
+} from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  Legend, ResponsiveContainer, Cell,
+} from 'recharts';
 import Loading from '../components/Loading';
 import Alert from '../components/Alert';
-import { attendanceService, examService } from '../api/services';
 import api from '../api/axios';
 
+// â”€â”€ Palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const C = {
+  purple: '#7c3aed',
+  green:  '#10b981',
+  orange: '#f59e0b',
+  red:    '#ef4444',
+  blue:   '#3b82f6',
+  gray:   '#6b7280',
+  red2:   '#dc2626',
+};
+
+// â”€â”€ Stat Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const StatCard = ({ icon: Icon, title, value, sub, accent = C.purple, onClick }) => (
+  <div
+    onClick={onClick}
+    style={{
+      background: '#fff', borderRadius: 14, padding: '1.25rem 1.5rem',
+      borderLeft: `4px solid ${accent}`,
+      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+      display: 'flex', alignItems: 'center', gap: '1rem',
+      cursor: onClick ? 'pointer' : 'default', transition: 'box-shadow 0.15s',
+    }}
+    onMouseEnter={(e) => onClick && (e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.1)')}
+    onMouseLeave={(e) => onClick && (e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)')}
+  >
+    <div style={{
+      width: 48, height: 48, borderRadius: 12, flexShrink: 0,
+      background: `${accent}18`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <Icon size={22} color={accent} />
+    </div>
+    <div style={{ minWidth: 0 }}>
+      <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {title}
+      </p>
+      <p style={{ margin: '0.15rem 0 0', fontSize: '1.75rem', fontWeight: 900, color: '#111827', lineHeight: 1.1 }}>
+        {value ?? 'â€“'}
+      </p>
+      {sub && <p style={{ margin: '0.2rem 0 0', fontSize: '0.72rem', color: C.gray }}>{sub}</p>}
+    </div>
+  </div>
+);
+
+// â”€â”€ Chart card wrapper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const ChartCard = ({ title, subtitle, children }) => (
+  <div style={{ background: '#fff', borderRadius: 14, padding: '1.25rem 1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+    <div style={{ marginBottom: '1rem' }}>
+      <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#111827' }}>{title}</p>
+      {subtitle && <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: C.gray }}>{subtitle}</p>}
+    </div>
+    {children}
+  </div>
+);
+
+// â”€â”€ Custom tooltip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.625rem 0.875rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+      <p style={{ margin: '0 0 0.4rem', fontSize: '0.75rem', fontWeight: 700, color: '#374151' }}>{label}</p>
+      {payload.map((p) => (
+        <p key={p.dataKey} style={{ margin: '0.15rem 0', fontSize: '0.8rem', color: p.color, fontWeight: 600 }}>
+          {p.name}: <strong>{p.value}</strong>
+        </p>
+      ))}
+    </div>
+  );
+};
+
+// â”€â”€ Status badge helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const statusBadge = (status, terminated) => {
+  if (terminated)         return { label: 'Terminated', bg: '#fee2e2', color: C.red2 };
+  if (status === 'flagged') return { label: 'Flagged',  bg: '#fef9c3', color: '#92400e' };
+  return { label: 'Submitted', bg: '#dcfce7', color: '#166534' };
+};
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  Main Dashboard Component
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [stats, setStats] = useState({
-    totalStudents: 0,
-    fraudAlerts: 0,
-    highRiskCases: 0,
-    activeInvestigations: 0,
-  });
-  const [attendanceStats, setAttendanceStats] = useState(null);
-  const [examStats, setExamStats] = useState(null);
-  const [lowAttendanceStudents, setLowAttendanceStudents] = useState([]);
-  const [highRiskStudents, setHighRiskStudents] = useState([]);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState('');
+  const [stats, setStats]           = useState(null);
+  const [trends, setTrends]         = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchDashboardData = async () => {
+  // â”€â”€ Fetch both stats and trends in one shot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const fetchAll = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    else setRefreshing(true);
+    setError('');
     try {
-      setLoading(true);
-      setError('');
-
-      // Fetch general stats
-      try {
-        const response = await api.get('/dashboard/stats');
-        setStats(response.data);
-      } catch (err) {
-        // Use default values if dashboard API not implemented yet
-        setStats({
-          totalStudents: 0,
-          fraudAlerts: 0,
-          highRiskCases: 0,
-          activeInvestigations: 0,
-        });
-      }
-
-      // Fetch attendance statistics
-      try {
-        const attendanceResponse = await attendanceService.getAttendanceStats();
-        setAttendanceStats(attendanceResponse.data);
-      } catch (err) {
-        console.error('Error fetching attendance stats:', err);
-        setAttendanceStats(null);
-      }
-
-      // Fetch exam statistics
-      try {
-        const examResponse = await examService.getExamStats();
-        setExamStats(examResponse.data);
-      } catch (err) {
-        console.error('Error fetching exam stats:', err);
-        setExamStats(null);
-      }
-
-      // Fetch low attendance students
-      try {
-        const lowAttResponse = await attendanceService.getLowAttendanceStudents(75);
-        setLowAttendanceStudents(lowAttResponse.data || []);
-      } catch (err) {
-        console.error('Error fetching low attendance students:', err);
-        setLowAttendanceStudents([]);
-      }
-
-      // Fetch high-risk students from exam performance
-      try {
-        const highRiskResponse = await examService.getHighRiskStudents();
-        setHighRiskStudents(highRiskResponse.data || []);
-      } catch (err) {
-        console.error('Error fetching high-risk students:', err);
-        setHighRiskStudents([]);
-      }
-
-      // Fetch total students count
-      try {
-        const studentsResponse = await api.get('/students?limit=1');
-        setStats(prev => ({
-          ...prev,
-          totalStudents: studentsResponse.data.pagination?.totalRecords || 0,
-        }));
-      } catch (err) {
-        console.error('Error fetching students count:', err);
-      }
+      const [statsRes, trendsRes] = await Promise.all([
+        api.get('/dashboard/stats'),
+        api.get('/dashboard/trends?months=6'),
+      ]);
+      setStats(statsRes.data.data);
+      setTrends(trendsRes.data.data || []);
     } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError('Failed to load dashboard data. Please try again.');
+      setError(err.response?.data?.message || 'Failed to load dashboard data.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
-  // Prepare chart data for attendance status
-  const attendanceChartData = attendanceStats
-    ? [
-        { name: 'Regular', value: attendanceStats.regularCount, color: '#10b981' },
-        { name: 'Warning', value: attendanceStats.warningCount, color: '#f59e0b' },
-        { name: 'Critical', value: attendanceStats.criticalCount, color: '#ef4444' },
-      ]
-    : [];
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Prepare chart data for exam pass/fail
-  const examPassFailData = examStats
-    ? [
-        { name: 'Pass', value: examStats.passCount, color: '#10b981' },
-        { name: 'Fail', value: examStats.failCount, color: '#ef4444' },
-      ]
-    : [];
+  // â”€â”€ Derived values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const s    = stats || {};
+  const perf = s.testPerformance || {};
 
-  // Prepare grade distribution data
-  const gradeDistributionData = examStats?.gradeDistribution
-    ? [
-        { grade: 'A+', count: examStats.gradeDistribution['A+'] || 0, color: '#10b981' },
-        { grade: 'A', count: examStats.gradeDistribution['A'] || 0, color: '#34d399' },
-        { grade: 'A-', count: examStats.gradeDistribution['A-'] || 0, color: '#6ee7b7' },
-        { grade: 'B+', count: examStats.gradeDistribution['B+'] || 0, color: '#60a5fa' },
-        { grade: 'B', count: examStats.gradeDistribution['B'] || 0, color: '#3b82f6' },
-        { grade: 'B-', count: examStats.gradeDistribution['B-'] || 0, color: '#2563eb' },
-        { grade: 'C+', count: examStats.gradeDistribution['C+'] || 0, color: '#fbbf24' },
-        { grade: 'C', count: examStats.gradeDistribution['C'] || 0, color: '#f59e0b' },
-        { grade: 'C-', count: examStats.gradeDistribution['C-'] || 0, color: '#d97706' },
-        { grade: 'D', count: examStats.gradeDistribution['D'] || 0, color: '#fb923c' },
-        { grade: 'F', count: examStats.gradeDistribution['F'] || 0, color: '#ef4444' },
-      ].filter(item => item.count > 0)
-    : [];
-
-  // Prepare performance comparison data
-  const performanceComparisonData = [
-    {
-      category: 'Attendance',
-      average: attendanceStats?.avgAttendance || 0,
-      target: 75,
-      status: (attendanceStats?.avgAttendance || 0) >= 75 ? 'Good' : 'Below Target',
-    },
-    {
-      category: 'Exam Score',
-      average: examStats?.avgPercentage || 0,
-      target: 60,
-      status: (examStats?.avgPercentage || 0) >= 60 ? 'Good' : 'Below Target',
-    },
+  const testResultsData = [
+    { name: 'Passed',  value: perf.passCount   || 0, color: C.green  },
+    { name: 'Failed',  value: perf.failCount   || 0, color: C.red    },
+    { name: 'Flagged', value: perf.flaggedCount || 0, color: C.orange },
   ];
 
-  // Prepare risk level distribution
-  const riskLevelData = [
-    {
-      name: 'Low Risk',
-      value: stats.totalStudents - (lowAttendanceStudents.length + highRiskStudents.length),
-      color: '#10b981',
-    },
-    { name: 'Attendance Risk', value: lowAttendanceStudents.length, color: '#f59e0b' },
-    { name: 'Performance Risk', value: highRiskStudents.length, color: '#ef4444' },
-  ].filter(item => item.value > 0);
+  const fraudTypes = (s.fraudByType || []).map((ft) => ({
+    name: (ft._id || 'Unknown'),
+    count: ft.count,
+  }));
 
-  // Combine high-risk students from both attendance and exams
-  const combinedHighRiskStudents = [
-    ...lowAttendanceStudents.slice(0, 5).map(s => ({ ...s, reason: 'Low Attendance' })),
-    ...highRiskStudents.slice(0, 5).map(s => ({ ...s, reason: 'Poor Exam Performance' })),
-  ];
-
-  if (loading) {
-    return <Loading fullScreen />;
-  }
+  if (loading) return <Loading fullScreen />;
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="page-header">
-        <h1 className="page-title">Dashboard</h1>
-        <p className="page-description">Overview of academic fraud detection system</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+
+      {/* â”€â”€ Page header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: '#111827', letterSpacing: '-0.02em' }}>
+            Dashboard
+          </h1>
+          <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: C.gray }}>
+            Academic fraud detection &amp; exam monitoring overview
+          </p>
+        </div>
+        <button
+          onClick={() => fetchAll(true)}
+          disabled={refreshing}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 1rem', borderRadius: 8, background: '#f9f8fd', border: '1px solid #e0d9f7', fontSize: '0.8rem', fontWeight: 600, color: C.purple, cursor: 'pointer' }}
+        >
+          <RefreshCw size={14} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }} />
+          {refreshing ? 'Refreshingâ€¦' : 'Refresh'}
+        </button>
       </div>
 
       {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
-      {/* Stats Cards */}
-      <div className="stats-grid">
-        <StatCard
-          title="Total Students"
-          value={stats.totalStudents}
-          icon={Users}
-          color="primary"
-        />
-        <StatCard
-          title="Low Attendance"
-          value={lowAttendanceStudents.length}
-          icon={Calendar}
-          color="warning"
-        />
-        <StatCard
-          title="High Risk (Exams)"
-          value={highRiskStudents.length}
-          icon={FileText}
-          color="danger"
-        />
-        <StatCard
-          title="Total Alerts"
-          value={lowAttendanceStudents.length + highRiskStudents.length}
-          icon={AlertTriangle}
-          color="warning"
-        />
+      {/* â”€â”€ 4 KPI stat cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+        <StatCard icon={Users}        title="Total Students"   value={s.totalStudents ?? 0}    sub="Registered in system"                                                  accent={C.blue}   onClick={() => navigate('/students')} />
+        <StatCard icon={FileText}     title="Tests Conducted"  value={s.totalTestsCompleted ?? 0} sub={`${s.flaggedSessions ?? 0} flagged Â· ${s.terminatedSessions ?? 0} terminated`} accent={C.purple} onClick={() => navigate('/proctoring-logs')} />
+        <StatCard icon={AlertTriangle} title="Fraud Alerts"    value={s.totalFraudAlerts ?? 0}  sub={`${s.recentFraudReports ?? 0} in last 7 days`}                       accent={C.orange} onClick={() => navigate('/fraud-reports')} />
+        <StatCard icon={ShieldAlert}  title="Malpractice Logs" value={s.malpracticeLogs ?? 0}   sub={`${s.activeInvestigations ?? 0} active investigations`}              accent={C.red}    onClick={() => navigate('/fraud-reports')} />
       </div>
 
-      {/* Key Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Attendance Metrics */}
-        {attendanceStats && (
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Attendance Overview</h3>
-              <Calendar className="w-6 h-6 text-blue-600" />
+      {/* â”€â”€ 5 mini metric tiles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
+        {[
+          { label: 'Avg Test Score',    value: `${perf.avgScore    ?? 0}%`, color: C.purple, icon: TrendingUp   },
+          { label: 'Pass Rate',         value: `${perf.passRate    ?? 0}%`, color: C.green,  icon: CheckCircle  },
+          { label: 'Flagged Sessions',  value: perf.flaggedCount   ?? 0,   color: C.orange, icon: AlertTriangle },
+          { label: 'Terminated',        value: s.terminatedSessions ?? 0,  color: C.red,    icon: XCircle      },
+          { label: 'Pending Review',    value: s.activeInvestigations ?? 0, color: C.blue,  icon: Clock        },
+        ].map(({ label, value, color, icon: Icon }) => (
+          <div key={label} style={{ background: '#fff', borderRadius: 12, padding: '1rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem', textAlign: 'center' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon size={16} color={color} />
             </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Average Attendance</span>
-                <span className="text-lg font-bold text-blue-600">
-                  {attendanceStats.avgAttendance?.toFixed(1)}%
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Regular Status</span>
-                <span className="text-lg font-bold text-green-600">
-                  {attendanceStats.regularCount || 0}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Warning Status</span>
-                <span className="text-lg font-bold text-yellow-600">
-                  {attendanceStats.warningCount || 0}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Critical Status</span>
-                <span className="text-lg font-bold text-red-600">
-                  {attendanceStats.criticalCount || 0}
-                </span>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Exam Performance Metrics */}
-        {examStats && (
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Exam Performance</h3>
-              <FileText className="w-6 h-6 text-purple-600" />
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Average Score</span>
-                <span className="text-lg font-bold text-purple-600">
-                  {examStats.avgPercentage?.toFixed(1)}%
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Total Exams</span>
-                <span className="text-lg font-bold text-blue-600">{examStats.totalExams || 0}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Pass Rate</span>
-                <span className="text-lg font-bold text-green-600">
-                  {examStats.passRate?.toFixed(1)}%
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Failed Exams</span>
-                <span className="text-lg font-bold text-red-600">{examStats.failCount || 0}</span>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Combined Risk Metrics */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Risk Summary</h3>
-            <AlertTriangle className="w-6 h-6 text-red-600" />
+            <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#111827', lineHeight: 1 }}>{value}</span>
+            <span style={{ fontSize: '0.7rem', color: C.gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
           </div>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Low Attendance Students</span>
-              <span className="text-lg font-bold text-orange-600">
-                {lowAttendanceStudents.length}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Failing Students</span>
-              <span className="text-lg font-bold text-red-600">{highRiskStudents.length}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Total High-Risk</span>
-              <span className="text-lg font-bold text-red-600">
-                {lowAttendanceStudents.length + highRiskStudents.length}
-              </span>
-            </div>
-            <div className="pt-2 border-t border-gray-200">
-              <button
-                onClick={() => navigate('/students')}
-                className="w-full py-2 px-4 bg-red-50 text-red-600 rounded-md text-sm font-medium hover:bg-red-100 transition-colors"
-              >
-                View All Risk Cases
-              </button>
-            </div>
-          </div>
-        </Card>
+        ))}
       </div>
 
-      {/* Alert Cards */}
-      <div className="alert-cards-grid">
-        <AlertCard
-          type="critical"
-          title="Critical Attendance"
-          message={`${attendanceStats?.criticalCount || 0} students with attendance below 60%`}
-          count={attendanceStats?.criticalCount || 0}
-          onClick={() => navigate('/attendance')}
-        />
-        <AlertCard
-          type="high"
-          title="Failing Students"
-          message={`${highRiskStudents.length} students with poor exam performance`}
-          count={highRiskStudents.length}
-          onClick={() => navigate('/exams')}
-        />
-        <AlertCard
-          type="medium"
-          title="Low Attendance Warning"
-          message={`${lowAttendanceStudents.length} students below 75% attendance`}
-          count={lowAttendanceStudents.length}
-          onClick={() => navigate('/attendance')}
-        />
-        <AlertCard
-          type="low"
-          title="Total Students Tracked"
-          message="Students with attendance and exam records"
-          count={stats.totalStudents}
-          onClick={() => navigate('/students')}
-        />
-      </div>
-
-      {/* Charts and Analytics Section */}
-      <div className="mt-8">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Analytics & Visualizations</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Comprehensive data visualization and trend analysis
-          </p>
-        </div>
-
-        {/* Primary Charts - Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Attendance Status Distribution */}
-          {attendanceStats && attendanceChartData.length > 0 && (
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Attendance Status Distribution</h3>
-                  <p className="text-sm text-gray-500">Current attendance status breakdown</p>
-                </div>
-                <Calendar className="w-6 h-6 text-blue-600" />
-              </div>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={attendanceChartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {attendanceChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [`${value} students`, 'Count']} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </Card>
-          )}
-
-          {/* Exam Pass/Fail Distribution */}
-          {examStats && examPassFailData.length > 0 && (
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Exam Pass/Fail Distribution</h3>
-                  <p className="text-sm text-gray-500">Overall exam performance results</p>
-                </div>
-                <FileText className="w-6 h-6 text-purple-600" />
-              </div>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={examPassFailData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="name" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
-                  <Tooltip
-                    formatter={(value) => [`${value} students`, 'Count']}
-                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
-                  />
-                  <Legend />
-                  <Bar dataKey="value" fill="#8884d8" radius={[8, 8, 0, 0]}>
-                    {examPassFailData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
-          )}
-        </div>
-
-        {/* Grade Distribution Chart - Full Width */}
-        {gradeDistributionData.length > 0 && (
-          <Card className="p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Grade Distribution Analysis</h3>
-                <p className="text-sm text-gray-500">Distribution of grades across all examinations</p>
-              </div>
-              <TrendingUp className="w-6 h-6 text-indigo-600" />
-              </div>
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={gradeDistributionData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="grade" stroke="#6b7280" />
-                <YAxis stroke="#6b7280" />
-                <Tooltip
-                  formatter={(value) => [`${value} students`, 'Count']}
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
-                />
-                <Legend />
-                <Bar dataKey="count" fill="#8884d8" radius={[8, 8, 0, 0]}>
-                  {gradeDistributionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
+      {/* â”€â”€ Charts row 1 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1.25rem' }}>
+        <ChartCard title="Fraud Events Over Time" subtitle="Monthly malpractice violations logged (last 6 months)">
+          {trends.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={trends} barSize={28}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend wrapperStyle={{ fontSize: '0.78rem' }} />
+                <Bar dataKey="fraudEvents" name="Fraud Events" fill={C.red} radius={[5, 5, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <p className="text-xs text-gray-600 mb-1">A Grades</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {(gradeDistributionData.filter(g => g.grade.startsWith('A')).reduce((sum, g) => sum + g.count, 0))}
-                </p>
-              </div>
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <p className="text-xs text-gray-600 mb-1">B Grades</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {(gradeDistributionData.filter(g => g.grade.startsWith('B')).reduce((sum, g) => sum + g.count, 0))}
-                </p>
-              </div>
-              <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                <p className="text-xs text-gray-600 mb-1">C Grades</p>
-                <p className="text-2xl font-bold text-yellow-600">
-                  {(gradeDistributionData.filter(g => g.grade.startsWith('C')).reduce((sum, g) => sum + g.count, 0))}
-                </p>
-              </div>
-              <div className="text-center p-3 bg-red-50 rounded-lg">
-                <p className="text-xs text-gray-600 mb-1">D & F Grades</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {(gradeDistributionData.filter(g => g.grade === 'D' || g.grade === 'F').reduce((sum, g) => sum + g.count, 0))}
-                </p>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Performance Comparison & Risk Analysis */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Performance vs Target Chart */}
-          {performanceComparisonData.length > 0 && (
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Performance vs Target</h3>
-                  <p className="text-sm text-gray-500">Current average vs expected thresholds</p>
-                </div>
-                <Activity className="w-6 h-6 text-green-600" />
-              </div>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={performanceComparisonData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis type="number" stroke="#6b7280" domain={[0, 100]} />
-                  <YAxis type="category" dataKey="category" stroke="#6b7280" width={100} />
-                  <Tooltip
-                    formatter={(value) => [`${value.toFixed(1)}%`, 'Score']}
-                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
-                  />
-                  <Legend />
-                  <Bar dataKey="average" fill="#3b82f6" name="Current Average" radius={[0, 8, 8, 0]} />
-                  <Bar dataKey="target" fill="#10b981" name="Target" radius={[0, 8, 8, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-              <div className="mt-4 space-y-2">
-                {performanceComparisonData.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                    <span className="text-sm font-medium text-gray-700">{item.category}</span>
-                    <span
-                      className={`text-sm font-semibold px-2 py-1 rounded ${
-                        item.status === 'Good'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
-                      }`}
-                    >
-                      {item.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </Card>
+          ) : (
+            <p style={{ padding: '2rem 0', textAlign: 'center', color: C.gray, fontSize: '0.875rem' }}>No trend data available yet.</p>
           )}
+        </ChartCard>
 
-          {/* Risk Level Distribution */}
-          {riskLevelData.length > 0 && (
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Student Risk Distribution</h3>
-                  <p className="text-sm text-gray-500">Risk categorization across all students</p>
-                </div>
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={riskLevelData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={true}
-                    label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {riskLevelData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [`${value} students`, 'Count']} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {riskLevelData.map((item, index) => (
-                  <div key={index} className="text-center p-2 rounded" style={{ backgroundColor: `${item.color}20` }}>
-                    <p className="text-xs text-gray-600 mb-1">{item.name}</p>
-                    <p className="text-xl font-bold" style={{ color: item.color }}>
-                      {item.value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </Card>
+        <ChartCard title="Tests Conducted Over Time" subtitle="Monthly test completions and flagged sessions (last 6 months)">
+          {trends.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={trends} barSize={18}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend wrapperStyle={{ fontSize: '0.78rem' }} />
+                <Bar dataKey="testsTotal"   name="Total Tests" fill={C.blue}   radius={[5, 5, 0, 0]} />
+                <Bar dataKey="testsFlagged" name="Flagged"     fill={C.orange} radius={[5, 5, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p style={{ padding: '2rem 0', textAlign: 'center', color: C.gray, fontSize: '0.875rem' }}>No trend data available yet.</p>
           )}
-        </div>
+        </ChartCard>
       </div>
 
-      {/* High-Risk Students Table */}
-      {combinedHighRiskStudents.length > 0 && (
-        <Card>
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              High-Risk Students Requiring Attention
-            </h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Students with low attendance or poor exam performance
-            </p>
+      {/* â”€â”€ Charts row 2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.25rem' }}>
+        <ChartCard title="Test Results Summary" subtitle="Breakdown of all completed test sessions">
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={testResultsData} layout="vertical" barSize={22}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: '#374151', fontWeight: 600 }} width={70} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="value" name="Sessions" radius={[0, 5, 5, 0]}>
+                {testResultsData.map((d, i) => <Cell key={i} fill={d.color} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+            {testResultsData.map((d) => (
+              <div key={d.name} style={{ flex: 1, minWidth: 80, textAlign: 'center', background: `${d.color}12`, borderRadius: 8, padding: '0.5rem 0.25rem' }}>
+                <p style={{ margin: 0, fontSize: '1.35rem', fontWeight: 900, color: d.color }}>{d.value}</p>
+                <p style={{ margin: '0.1rem 0 0', fontSize: '0.68rem', color: C.gray, fontWeight: 600, textTransform: 'uppercase' }}>{d.name}</p>
+              </div>
+            ))}
           </div>
-          <div className="p-4">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Student ID
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Name
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Department
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Risk Reason
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Metric
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {combinedHighRiskStudents.map((student, index) => (
-                    <tr key={`${student.studentId}-${index}`}>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {student.studentId}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {student.name}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                        {student.department}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-semibold ${
-                            student.reason === 'Low Attendance'
-                              ? 'bg-orange-100 text-orange-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
-                        >
-                          {student.reason}
+        </ChartCard>
+
+        <ChartCard title="Fraud Alert Types" subtitle="Distribution of fraud report categories">
+          {fraudTypes.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={fraudTypes} layout="vertical" barSize={18}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#374151' }} width={110} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="count" name="Reports" fill={C.purple} radius={[0, 5, 5, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p style={{ padding: '2rem 0', textAlign: 'center', color: C.gray, fontSize: '0.875rem' }}>No fraud reports recorded yet.</p>
+          )}
+        </ChartCard>
+      </div>
+
+      {/* â”€â”€ Recent Flagged Sessions table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {(s.recentFlaggedSessions?.length > 0) && (
+        <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderBottom: '1px solid #f3f4f6' }}>
+            <div>
+              <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#111827' }}>Recent Flagged Test Sessions</p>
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: C.gray }}>Latest sessions flagged or terminated due to malpractice</p>
+            </div>
+            <button onClick={() => navigate('/proctoring-logs')} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', fontWeight: 600, color: C.purple, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              View all <ChevronRight size={14} />
+            </button>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+              <thead>
+                <tr style={{ background: '#fafaf9' }}>
+                  {['Student', 'Score', 'Fraud Score', 'Violations', 'Status', 'Submitted At'].map((h) => (
+                    <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {s.recentFlaggedSessions.map((session) => {
+                  const badge = statusBadge(session.status, session.terminated);
+                  const name  = session.userName || session.userEmail || 'Unknown';
+                  return (
+                    <tr key={session._id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                      <td style={{ padding: '0.75rem 1rem', color: '#1f2937', fontWeight: 600 }}>{name}</td>
+                      <td style={{ padding: '0.75rem 1rem' }}>
+                        <span style={{ fontWeight: 700, color: (session.percentageScore ?? 0) >= 50 ? C.green : C.red }}>
+                          {session.percentageScore ?? 0}%
                         </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-red-600">
-                        {student.avgAttendance
-                          ? `${student.avgAttendance.toFixed(1)}% Attendance`
-                          : student.avgPercentage
-                          ? `${student.avgPercentage.toFixed(1)}% Avg Score`
-                          : 'N/A'}
+                      <td style={{ padding: '0.75rem 1rem' }}>
+                        <span style={{ fontWeight: 700, color: (session.fraudScore ?? 0) >= 70 ? C.red : (session.fraudScore ?? 0) >= 40 ? C.orange : C.gray }}>
+                          {session.fraudScore ?? 0}<span style={{ fontWeight: 400, color: C.gray }}> / 100</span>
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem', color: '#6b7280' }}>{session.fraudCount ?? 0}</td>
+                      <td style={{ padding: '0.75rem 1rem' }}>
+                        <span style={{ display: 'inline-block', padding: '0.2rem 0.6rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700, background: badge.bg, color: badge.color }}>
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem', color: C.gray, whiteSpace: 'nowrap' }}>
+                        {session.submittedAt
+                          ? new Date(session.submittedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                          : 'â€”'}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </Card>
+        </div>
       )}
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

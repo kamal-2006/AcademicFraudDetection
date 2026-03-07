@@ -1,0 +1,36 @@
+const express = require('express');
+const router = express.Router();
+const testController = require('../controllers/testController');
+const { protect, authorize } = require('../middleware/auth');
+
+// All test routes require authentication
+router.use(protect);
+
+// Questions
+router.get('/questions', testController.getQuestions);
+
+// Sessions
+router.post('/sessions', testController.startSession);
+router.get('/sessions/:id', testController.getSessionDetail);
+router.put('/sessions/:id/submit', testController.submitSession);
+router.post('/sessions/:id/fraud', testController.logFraudEvent);
+
+// Results
+router.get('/my-results', testController.getMyResults);
+
+// Admin / Faculty proctoring dashboard
+router.get(
+  '/proctoring/logs',
+  authorize('admin', 'faculty'),
+  testController.getAllProctoringLogs
+);
+router.get(
+  '/proctoring/sessions',
+  authorize('admin', 'faculty'),
+  testController.getProctoringSessionSummary
+);
+
+// Frame analysis proxy → Python proctoring service
+router.post('/proctoring/analyze', testController.analyzeFrame);
+
+module.exports = router;

@@ -31,9 +31,23 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['admin', 'faculty'],
-      default: 'faculty',
+      enum: ['admin', 'faculty', 'student'],
+      default: 'student',
       lowercase: true,
+    },
+    studentId: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    department: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    consentGiven: {
+      type: Boolean,
+      default: false,
     },
   },
   {

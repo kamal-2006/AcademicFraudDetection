@@ -6,6 +6,7 @@ import {
   FileText,
   Copy,
   AlertTriangle,
+  Shield,
   Menu,
   X,
 } from 'lucide-react';
@@ -68,6 +69,7 @@ const Sidebar = () => {
     { name: 'Exam Performance', path: '/exams', icon: FileText },
     { name: 'Plagiarism', path: '/plagiarism', icon: Copy },
     { name: 'Fraud Reports', path: '/fraud-reports', icon: AlertTriangle },
+    { name: 'Proctoring Logs', path: '/proctoring', icon: Shield },
   ];
 
   const isActive = (path) => location.pathname === path;
