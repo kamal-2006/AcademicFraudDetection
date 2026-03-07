@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Users, AlertTriangle, FileText, ShieldAlert,
   TrendingUp, CheckCircle, XCircle, Clock,
-  RefreshCw, ChevronRight,
+  RefreshCw, ChevronRight, Copy,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -182,6 +182,8 @@ const Dashboard = () => {
           { label: 'Flagged Sessions',  value: perf.flaggedCount   ?? 0,   color: C.orange, icon: AlertTriangle },
           { label: 'Terminated',        value: s.terminatedSessions ?? 0,  color: C.red,    icon: XCircle      },
           { label: 'Pending Review',    value: s.activeInvestigations ?? 0, color: C.blue,  icon: Clock        },
+          { label: 'Assignments',       value: s.totalAssignments  ?? 0,   color: C.purple, icon: FileText     },
+          { label: 'Plagiarism Cases',  value: s.plagiarismCasesCount ?? 0, color: C.red,   icon: Copy         },
         ].map(({ label, value, color, icon: Icon }) => (
           <div key={label} style={{ background: '#fff', borderRadius: 12, padding: '1rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem', textAlign: 'center' }}>
             <div style={{ width: 36, height: 36, borderRadius: 9, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

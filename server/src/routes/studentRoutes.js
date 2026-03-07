@@ -19,6 +19,9 @@ router.post(
   studentController.debugCSV
 );
 
+// Create a single student
+router.post('/', studentController.createStudent);
+
 // Get all students with search and filter
 router.get('/', studentController.getStudents);
 

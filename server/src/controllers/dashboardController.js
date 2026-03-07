@@ -1,9 +1,10 @@
-const Student = require('../models/Student');
-const FraudReport = require('../models/FraudReport');
-const Attendance = require('../models/Attendance');
+const Student       = require('../models/Student');
+const FraudReport   = require('../models/FraudReport');
+const Attendance    = require('../models/Attendance');
 const ExamPerformance = require('../models/ExamPerformance');
-const TestSession = require('../models/TestSession');
-const TestFraudLog = require('../models/TestFraudLog');
+const TestSession   = require('../models/TestSession');
+const TestFraudLog  = require('../models/TestFraudLog');
+const Assignment    = require('../models/Assignment');
 
 /**
  * @desc    Get consolidated dashboard statistics
@@ -27,6 +28,8 @@ exports.getDashboardStats = async (req, res) => {
       malpracticeLogCount,
       fraudByType,
       recentFlaggedSessions,
+      totalAssignments,
+      plagiarismCasesCount,
     ] = await Promise.all([
       Student.countDocuments(),
       FraudReport.countDocuments(),
@@ -60,6 +63,9 @@ exports.getDashboardStats = async (req, res) => {
         .limit(8)
         .populate('userId', 'name email studentId')
         .select('userName userEmail fraudScore fraudCount percentageScore submittedAt status terminated'),
+      // Assignment totals
+      Assignment.countDocuments(),
+      Assignment.countDocuments({ plagiarismStatus: { $in: ['suspected', 'fraud'] } }),
     ]);
 
     const perf = testScoreAgg[0] || { avgScore: 0, passCount: 0, failCount: 0, total: 0 };
@@ -85,6 +91,8 @@ exports.getDashboardStats = async (req, res) => {
         },
         fraudByType,
         recentFlaggedSessions,
+        totalAssignments,
+        plagiarismCasesCount,
       },
     });
   } catch (error) {

@@ -8,10 +8,19 @@ const { Readable } = require('stream');
 const parseCSV = (buffer) => {
   return new Promise((resolve, reject) => {
     const results = [];
-    const stream = Readable.from(buffer.toString());
+    // Strip UTF-8 BOM (\uFEFF) that Excel adds to CSV exports
+    let csvText = buffer.toString('utf8');
+    if (csvText.charCodeAt(0) === 0xFEFF) {
+      csvText = csvText.slice(1);
+    }
+    const stream = Readable.from(csvText);
 
     stream
-      .pipe(csv())
+      .pipe(csv({
+        // Trim whitespace from headers and values
+        mapHeaders: ({ header }) => header.trim(),
+        mapValues: ({ value }) => (typeof value === 'string' ? value.trim() : value),
+      }))
       .on('data', (data) => results.push(data))
       .on('end', () => resolve(results))
       .on('error', (error) => reject(error));
@@ -22,25 +31,34 @@ const parseCSV = (buffer) => {
  * Normalize field name to find value in CSV record
  */
 const findFieldValue = (record, fieldName) => {
-  // Define all possible variations for each field
   const fieldMappings = {
-    studentId: ['studentId', 'student_id', 'Student ID', 'StudentID', 'STUDENT_ID', 'student id', 'ID', 'id'],
-    name: ['name', 'Name', 'NAME', 'student_name', 'Student Name', 'StudentName', 'STUDENT_NAME'],
-    email: ['email', 'Email', 'EMAIL', 'student_email', 'Student Email', 'E-mail', 'e-mail'],
+    studentId:  ['studentId', 'student_id', 'Student ID', 'StudentID', 'STUDENT_ID', 'student id', 'ID', 'id'],
+    name:       ['name', 'Name', 'NAME', 'student_name', 'Student Name', 'StudentName', 'STUDENT_NAME', 'Full Name', 'full name'],
+    email:      ['email', 'Email', 'EMAIL', 'student_email', 'Student Email', 'E-mail', 'e-mail'],
     department: ['department', 'Department', 'DEPARTMENT', 'dept', 'Dept', 'DEPT'],
-    year: ['year', 'Year', 'YEAR', 'academic_year', 'Academic Year', 'Year Level', 'year level'],
-    gpa: ['gpa', 'GPA', 'Gpa', 'grade', 'Grade', 'GRADE'],
-    attendance: ['attendance', 'Attendance', 'ATTENDANCE', 'Attendance %', 'attendance %', 'Attendance Percentage'],
+    year:       ['year', 'Year', 'YEAR', 'academic_year', 'Academic Year', 'Year Level', 'year level'],
+    gpa:        ['gpa', 'GPA', 'Gpa', 'cgpa', 'CGPA', 'Cgpa', 'grade', 'Grade', 'GRADE'],
+    attendance: ['attendance', 'Attendance', 'ATTENDANCE', 'Attendance %', 'attendance %', 'Attendance Percentage', 'attendance_percentage'],
   };
 
   const variations = fieldMappings[fieldName] || [fieldName];
-  
+
+  // 1. Exact match
   for (const variation of variations) {
     if (record[variation] !== undefined && record[variation] !== null && record[variation] !== '') {
       return String(record[variation]).trim();
     }
   }
-  
+
+  // 2. Case-insensitive fallback against all record keys
+  const lowerVariations = variations.map(v => v.toLowerCase().replace(/[^a-z0-9]/g, ''));
+  for (const key of Object.keys(record)) {
+    const normKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (lowerVariations.includes(normKey) && record[key] !== undefined && record[key] !== null && record[key] !== '') {
+      return String(record[key]).trim();
+    }
+  }
+
   return null;
 };
 
@@ -94,16 +112,16 @@ const validateStudentData = (data) => {
       year: parseInt(fieldValues.year),
       gpa: parseFloat(fieldValues.gpa),
       attendance: parseFloat(fieldValues.attendance),
-      riskLevel: findFieldValue(record, 'riskLevel') || 'Low',
+      riskLevel: 'Low', // will be overwritten by calculateRiskLevel below
     };
 
     // Validate data types and ranges
-    if (isNaN(normalizedRecord.year) || normalizedRecord.year < 1 || normalizedRecord.year > 10) {
-      recordErrors.push(`Year must be a number between 1 and 10 (got: ${fieldValues.year})`);
+    if (isNaN(normalizedRecord.year) || normalizedRecord.year < 1 || normalizedRecord.year > 5) {
+      recordErrors.push(`Year must be a number between 1 and 5 (got: ${fieldValues.year})`);
     }
 
-    if (isNaN(normalizedRecord.gpa) || normalizedRecord.gpa < 0 || normalizedRecord.gpa > 5) {
-      recordErrors.push(`GPA must be a number between 0 and 5 (got: ${fieldValues.gpa})`);
+    if (isNaN(normalizedRecord.gpa) || normalizedRecord.gpa < 0 || normalizedRecord.gpa > 10) {
+      recordErrors.push(`CGPA must be a number between 0 and 10 (got: ${fieldValues.gpa})`);
     }
 
     if (
@@ -120,13 +138,9 @@ const validateStudentData = (data) => {
       recordErrors.push('Invalid email format');
     }
 
-    // Validate risk level
-    const validRiskLevels = ['Low', 'Medium', 'High', 'Critical'];
-    if (!validRiskLevels.includes(normalizedRecord.riskLevel)) {
-      // Auto-calculate if invalid
-      const student = new Student(normalizedRecord);
-      normalizedRecord.riskLevel = student.calculateRiskLevel();
-    }
+    // Always auto-calculate risk level from GPA and attendance
+    const tempStudent = new Student(normalizedRecord);
+    normalizedRecord.riskLevel = tempStudent.calculateRiskLevel();
 
     if (recordErrors.length > 0) {
       errors.push({
@@ -318,6 +332,39 @@ exports.uploadCSV = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error processing CSV file',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Create a single student
+ * POST /api/students
+ */
+exports.createStudent = async (req, res) => {
+  try {
+    const { studentId, name, email, department, year, gpa, attendance } = req.body;
+
+    const student = new Student({ studentId, name, email, department, year, gpa, attendance });
+    student.calculateRiskLevel();
+    await student.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Student created successfully',
+      data: student,
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'A student with that ID or email already exists.',
+      });
+    }
+    console.error('Create Student Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating student',
       error: error.message,
     });
   }

@@ -40,9 +40,9 @@ const studentSchema = new mongoose.Schema(
     },
     gpa: {
       type: Number,
-      required: [true, 'GPA is required'],
-      min: [0, 'GPA must be between 0 and 4'],
-      max: [4, 'GPA must be between 0 and 4'],
+      required: [true, 'CGPA is required'],
+      min: [0, 'CGPA must be between 0 and 10'],
+      max: [10, 'CGPA must be between 0 and 10'],
     },
     attendance: {
       type: Number,
@@ -69,13 +69,13 @@ const studentSchema = new mongoose.Schema(
 studentSchema.index({ name: 'text', email: 'text', studentId: 'text' });
 studentSchema.index({ riskLevel: 1 });
 
-// Method to calculate risk level based on GPA and attendance
+// Method to calculate risk level based on CGPA (0-10) and attendance
 studentSchema.methods.calculateRiskLevel = function () {
-  if (this.gpa < 2.0 || this.attendance < 50) {
+  if (this.gpa < 5.0 || this.attendance < 50) {
     this.riskLevel = 'Critical';
-  } else if (this.gpa < 2.5 || this.attendance < 70) {
+  } else if (this.gpa < 6.0 || this.attendance < 70) {
     this.riskLevel = 'High';
-  } else if (this.gpa < 3.0 || this.attendance < 85) {
+  } else if (this.gpa < 7.5 || this.attendance < 85) {
     this.riskLevel = 'Medium';
   } else {
     this.riskLevel = 'Low';

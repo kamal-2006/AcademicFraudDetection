@@ -215,3 +215,21 @@ export const fraudReportService = {
     return response.data;
   },
 };
+
+// Assignment (submission + plagiarism detection)
+export const assignmentService = {
+  submit: async (formData) =>
+    (await api.post('/assignments', formData, { headers: { 'Content-Type': 'multipart/form-data' } })).data,
+
+  getMyAssignments: async () =>
+    (await api.get('/assignments/my')).data,
+
+  getAllAssignments: async () =>
+    (await api.get('/assignments')).data,
+
+  getPlagiarismCases: async () =>
+    (await api.get('/assignments/plagiarism')).data,
+
+  getStats: async () =>
+    (await api.get('/assignments/stats')).data,
+};

@@ -11,9 +11,11 @@ import {
   X,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
   const location = useLocation();
+  const { user } = useAuth();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -62,15 +64,17 @@ const Sidebar = () => {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isMobileOpen]);
 
-  const menuItems = [
+  const allMenuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Students', path: '/students', icon: Users },
-    { name: 'Attendance', path: '/attendance', icon: Calendar },
+    { name: 'Attendance', path: '/attendance', icon: Calendar, adminOnly: true },
     { name: 'Exam Performance', path: '/exams', icon: FileText },
     { name: 'Plagiarism', path: '/plagiarism', icon: Copy },
     { name: 'Fraud Reports', path: '/fraud-reports', icon: AlertTriangle },
     { name: 'Proctoring Logs', path: '/proctoring', icon: Shield },
   ];
+
+  const menuItems = allMenuItems.filter(item => !item.adminOnly || user?.role === 'admin');
 
   const isActive = (path) => location.pathname === path;
 

@@ -28,6 +28,23 @@ const upload = multer({
   },
 });
 
+// ── Assignment upload (PDF, DOCX, TXT – up to 10 MB) ──────────────────────
+const assignmentFileFilter = (req, file, cb) => {
+  const allowed = ['.pdf', '.docx', '.txt'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowed.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only PDF, DOCX, and TXT files are allowed.'), false);
+  }
+};
+
+const assignmentUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: assignmentFileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+});
+
 // Error handling middleware for multer
 const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
@@ -50,4 +67,4 @@ const handleMulterError = (err, req, res, next) => {
   next();
 };
 
-module.exports = { upload, handleMulterError };
+module.exports = { upload, assignmentUpload, handleMulterError };
