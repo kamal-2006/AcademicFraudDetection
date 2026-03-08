@@ -37,6 +37,7 @@ const testSessionSchema = new mongoose.Schema(
     fraudCount: { type: Number, default: 0 },
     fraudScore: { type: Number, default: 0 },
     terminated: { type: Boolean, default: false },
+    concurrentLoginDetected: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

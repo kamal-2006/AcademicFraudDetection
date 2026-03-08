@@ -45,6 +45,23 @@ const assignmentUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
 
+// ── Marksheet upload (PDF or TXT – up to 5 MB) ────────────────────────────
+const marksheetFileFilter = (req, file, cb) => {
+  const allowed = ['.pdf', '.txt'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (allowed.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only PDF or TXT files are accepted for marksheet upload.'), false);
+  }
+};
+
+const marksheetUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: marksheetFileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+});
+
 // Error handling middleware for multer
 const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
@@ -67,4 +84,4 @@ const handleMulterError = (err, req, res, next) => {
   next();
 };
 
-module.exports = { upload, assignmentUpload, handleMulterError };
+module.exports = { upload, assignmentUpload, marksheetUpload, handleMulterError };

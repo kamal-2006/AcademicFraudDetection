@@ -1,12 +1,13 @@
-import { GraduationCap, LayoutDashboard, ClipboardList, LogOut, Shield, Upload } from 'lucide-react';
+import { GraduationCap, LayoutDashboard, ClipboardList, LogOut, Shield, Upload, FileCheck } from 'lucide-react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/StudentLayout.css';
 
 const NAV = [
-  { label: 'Dashboard',    path: '/student-dashboard',             icon: LayoutDashboard },
-  { label: 'Take Test',    path: '/student-dashboard/test',        icon: ClipboardList   },
-  { label: 'Assignments',  path: '/student-dashboard/assignments', icon: Upload          },
+  { label: 'Dashboard',    path: '/student-dashboard',              icon: LayoutDashboard },
+  { label: 'Take Test',    path: '/student-dashboard/test',         icon: ClipboardList   },
+  { label: 'Assignments',  path: '/student-dashboard/assignments',  icon: Upload          },
+  { label: 'Marksheet',    path: '/student-dashboard/marksheet',    icon: FileCheck       },
 ];
 
 const StudentLayout = () => {

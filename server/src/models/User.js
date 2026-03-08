@@ -49,6 +49,17 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    activeSessionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'TestSession',
+      default: null,
+    },
+    gpa: {
+      type: Number,
+      default: null,
+      min: 0,
+      max: 10,
+    },
   },
   {
     timestamps: true, // Automatically adds createdAt and updatedAt

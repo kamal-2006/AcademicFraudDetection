@@ -1,326 +1,289 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Eye, Filter, Search, FileText, Clock, CheckCircle, XCircle, Plus, Download } from 'lucide-react';
-import Card from '../components/Card';
-import Table from '../components/Table';
-import Button from '../components/Button';
-import Loading from '../components/Loading';
-import Alert from '../components/Alert';
-import { RiskBadge, StatCard } from '../components/Card';
-import { STATUS_COLORS } from '../utils/constants';
-import { formatDateTime } from '../utils/helpers';
+﻿import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  AlertTriangle, Shield, FileText, Clock,
+  XCircle, Search, ChevronLeft, ChevronRight, Filter,
+} from 'lucide-react';
 import api from '../api/axios';
 
-const FraudReports = () => {
-  const navigate = useNavigate();
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterRisk, setFilterRisk] = useState('all');
+/* -- helpers -------------------------------------------------------- */
+const fmtDate = (d) =>
+  d
+    ? new Date(d).toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      })
+    : '--';
 
-  useEffect(() => {
-    fetchFraudReports();
+const SEV = {
+  critical: { bg: '#fee2e2', color: '#991b1b', label: 'Critical' },
+  high:     { bg: '#fff7ed', color: '#9a3412', label: 'High'     },
+  medium:   { bg: '#fef9c3', color: '#92400e', label: 'Medium'   },
+  low:      { bg: '#f0fdf4', color: '#166534', label: 'Low'      },
+};
+
+const TYPE_CONF = {
+  'Quiz Violation':       { bg: '#fdf4ff', color: '#7c3aed', Icon: Shield        },
+  'Fake Marksheet':       { bg: '#fee2e2', color: '#991b1b', Icon: XCircle       },
+  'Suspicious Marksheet': { bg: '#fff7ed', color: '#9a3412', Icon: AlertTriangle  },
+  'Plagiarism':           { bg: '#fef9c3', color: '#92400e', Icon: FileText      },
+  'default':              { bg: '#f8f7ff', color: '#374151', Icon: AlertTriangle  },
+};
+const typeConf = (t) => TYPE_CONF[t] || TYPE_CONF.default;
+
+const SeverityBadge = ({ level = 'low' }) => {
+  const s = SEV[level] || SEV.low;
+  return (
+    <span style={{
+      fontSize: '0.7rem', fontWeight: 700, padding: '0.2rem 0.55rem',
+      borderRadius: 999, background: s.bg, color: s.color,
+    }}>{s.label}</span>
+  );
+};
+
+const LIMIT = 15;
+const TYPES = ['all', 'Quiz Violation', 'Fake Marksheet', 'Suspicious Marksheet'];
+
+const FraudReports = () => {
+  const [cases,      setCases]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState('');
+  const [search,     setSearch]     = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [page,       setPage]       = useState(1);
+  const [stats,      setStats]      = useState({ quiz: 0, marksheet: 0, total: 0 });
+  const searchTimer = useRef(null);
+
+  const fetchData = useCallback(async (q, type, pg) => {
+    setLoading(true);
+    setError('');
+    try {
+      const base = new URLSearchParams({ page: pg, limit: LIMIT });
+      if (q) base.set('search', q);
+
+      const [quizRes, markRes] = await Promise.all([
+        api.get(`/test/fraud-cases?${base}`),
+        api.get(`/marksheets?page=${pg}&limit=${LIMIT}${q ? `&search=${encodeURIComponent(q)}` : ''}`),
+      ]);
+
+      const quizCases = (quizRes.data.data || []).map((item) => {
+        const s = item.session;
+        const u = s.userId;
+        return {
+          _id:           s._id,
+          fraudType:     'Quiz Violation',
+          studentName:   u?.name       || s.userName  || 'Unknown',
+          studentId:     u?.studentId  || '--',
+          studentEmail:  u?.email      || s.userEmail || '',
+          description:   `Fraud score: ${s.fraudScore ?? 0} pts, ${s.fraudCount ?? 0} events` +
+                         (s.terminated ? ' (terminated)' : ''),
+          severity:      (s.fraudScore ?? 0) >= 80 ? 'critical'
+                        : (s.fraudScore ?? 0) >= 50 ? 'high'
+                        : (s.fraudScore ?? 0) >= 25 ? 'medium' : 'low',
+          date:          s.submittedAt || s.updatedAt,
+          topViolations: (item.topViolations || []).map((v) => v.eventType.replace(/_/g, ' ')),
+        };
+      });
+
+      const allMark = (markRes.data?.data || []);
+      const markCases = allMark
+        .filter((m) => m.status === 'fake' || m.status === 'suspicious')
+        .map((m) => ({
+          _id:           m._id,
+          fraudType:     m.status === 'fake' ? 'Fake Marksheet' : 'Suspicious Marksheet',
+          studentName:   m.studentName  || 'Unknown',
+          studentId:     m.studentId    || '--',
+          studentEmail:  m.studentEmail || '',
+          description:   m.verdict      || 'GPA discrepancy detected.',
+          severity:      m.status === 'fake' ? 'critical' : 'medium',
+          date:          m.uploadedAt,
+          topViolations: [],
+        }));
+
+      let combined = [...quizCases, ...markCases]
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+      if (type !== 'all') combined = combined.filter((c) => c.fraudType === type);
+
+      setCases(combined);
+      setStats({ quiz: quizCases.length, marksheet: markCases.length, total: combined.length });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load fraud reports.');
+      setCases([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const fetchFraudReports = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const response = await api.get('/fraud-reports');
-      // Backend returns { success: true, data: [...], pagination: {...} }
-      if (response.data.success && response.data.data) {
-        // Transform backend data to match frontend expectations
-        const transformedReports = response.data.data.map(report => ({
-          id: report._id,
-          caseId: `FR-${new Date(report.detectionTimestamp).getFullYear()}-${String(report._id).slice(-4).toUpperCase()}`,
-          studentId: report.studentId,
-          studentName: report.student?.name || 'Unknown',
-          studentEmail: report.student?.email || '',
-          department: report.student?.department || '',
-          fraudType: report.fraudType,
-          description: report.systemRemarks || 'No description available',
-          riskLevel: report.riskLevel?.toLowerCase() || 'low',
-          riskScore: report.riskScore,
-          status: report.status?.toLowerCase().replace(' ', '-') || 'pending',
-          reportedDate: report.detectionTimestamp,
-          investigator: report.reviewedBy || null,
-          plagiarismScore: report.plagiarismScore,
-          matchedSources: report.matchedSources || [],
-          attendanceIrregularities: report.attendanceIrregularities,
-          identityAnomalies: report.identityAnomalies,
-        }));
-        setReports(transformedReports);
-      } else {
-        setReports([]);
-      }
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching fraud reports:', err);
-      setError(err.response?.data?.message || 'Failed to load fraud reports. Please try again.');
-      // Use empty array on error instead of mock data
-      setReports([]);
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => fetchData(search, typeFilter, page), 350);
+    return () => clearTimeout(searchTimer.current);
+  }, [search, typeFilter, page, fetchData]);
 
-  const fetchFraudReportsFallback = async () => {
-    // Fallback with mock data for testing
-    try {
-      setReports([
-        {
-          id: 1,
-          caseId: 'FR-2026-001',
-          studentId: 'STU003',
-          studentName: 'Mike Johnson',
-          fraudType: 'Plagiarism',
-          description: 'Assignment similarity 92% with another student',
-          riskLevel: 'critical',
-          status: 'pending',
-          reportedDate: '2026-01-20T10:30:00',
-          investigator: null,
-        },
-        {
-          id: 2,
-          caseId: 'FR-2026-002',
-          studentId: 'STU005',
-          studentName: 'David Brown',
-          fraudType: 'Exam Anomaly',
-          description: 'Unusual score improvement and fast completion time',
-          riskLevel: 'high',
-          status: 'investigating',
-          reportedDate: '2026-01-22T14:15:00',
-          investigator: 'Dr. Smith',
-        },
-        {
-          id: 3,
-          caseId: 'FR-2026-003',
-          studentId: 'STU002',
-          studentName: 'Jane Smith',
-          fraudType: 'Attendance',
-          description: 'Attendance below 40% threshold',
-          riskLevel: 'medium',
-          status: 'investigating',
-          reportedDate: '2026-01-25T09:00:00',
-          investigator: 'Dr. Johnson',
-        },
-        {
-          id: 4,
-          caseId: 'FR-2026-004',
-          studentId: 'STU007',
-          studentName: 'Robert Wilson',
-          fraudType: 'Plagiarism',
-          description: 'Code assignment 95% match with online repository',
-          riskLevel: 'critical',
-          status: 'pending',
-          reportedDate: '2026-02-01T11:20:00',
-          investigator: null,
-        },
-        {
-          id: 5,
-          caseId: 'FR-2026-005',
-          studentId: 'STU012',
-          studentName: 'Alex Martinez',
-          fraudType: 'Performance Spike',
-          description: 'Sudden GPA increase from 2.0 to 3.8',
-          riskLevel: 'high',
-          status: 'resolved',
-          reportedDate: '2026-01-18T16:45:00',
-          investigator: 'Dr. Williams',
-        },
-        {
-          id: 6,
-          caseId: 'FR-2026-006',
-          studentId: 'STU015',
-          studentName: 'Lisa Anderson',
-          fraudType: 'Exam Anomaly',
-          description: 'Completed exam in 20 minutes (avg 120 min)',
-          riskLevel: 'high',
-          status: 'dismissed',
-          reportedDate: '2026-01-28T13:30:00',
-          investigator: 'Dr. Brown',
-        },
-      ]);
-      setLoading(false);
-    } catch (err) {
-      console.error('Fallback error:', err);
-      setLoading(false);
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    const statusClass = STATUS_COLORS[status] || STATUS_COLORS.pending;
-    return (
-      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusClass}`}>
-        {status.toUpperCase()}
-      </span>
-    );
-  };
-
-  const filteredReports = reports.filter((report) => {
-    const matchesStatus = filterStatus === 'all' || report.status === filterStatus;
-    const matchesRisk = filterRisk === 'all' || report.riskLevel === filterRisk;
-    return matchesStatus && matchesRisk;
-  });
-
-  const columns = [
-    {
-      header: 'Case ID',
-      accessor: 'caseId',
-      render: (row) => <span className="font-mono text-sm">{row.caseId}</span>,
-    },
-    {
-      header: 'Student',
-      accessor: 'studentName',
-      render: (row) => (
-        <div>
-          <p className="font-medium">{row.studentName}</p>
-          <p className="text-xs text-gray-500">{row.studentId}</p>
-        </div>
-      ),
-    },
-    {
-      header: 'Fraud Type',
-      accessor: 'fraudType',
-    },
-    {
-      header: 'Risk Level',
-      accessor: 'riskLevel',
-      render: (row) => <RiskBadge level={row.riskLevel} />,
-    },
-    {
-      header: 'Status',
-      accessor: 'status',
-      render: (row) => getStatusBadge(row.status),
-    },
-    {
-      header: 'Reported',
-      accessor: 'reportedDate',
-      render: (row) => formatDateTime(row.reportedDate),
-    },
-    {
-      header: 'Actions',
-      accessor: 'id',
-      render: (row) => (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => navigate(`/fraud-reports/${row.id}`)}
-        >
-          <Eye className="w-4 h-4 mr-1" />
-          View
-        </Button>
-      ),
-    },
-  ];
-
-  const pendingCases = reports.filter((r) => r.status === 'pending');
-  const investigatingCases = reports.filter((r) => r.status === 'investigating');
-  const criticalCases = reports.filter((r) => r.riskLevel === 'critical');
-
-  if (loading) {
-    return <Loading fullScreen />;
-  }
+  const totalPages = Math.ceil(cases.length / LIMIT) || 1;
+  const paginated  = cases.slice((page - 1) * LIMIT, page * LIMIT);
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Fraud Reports</h1>
-          <p className="page-description">Monitor and investigate fraud detection cases</p>
-        </div>
-        <div className="flex gap-3">
-          <Button variant="secondary" icon={Download}>
-            Export Reports
-          </Button>
-          <Button variant="primary" icon={Plus}>
-            New Report
-          </Button>
-        </div>
+    <div>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h1 style={{ margin: '0 0 0.25rem', fontSize: '1.35rem', fontWeight: 800, color: '#1a0836', letterSpacing: '-0.02em' }}>
+          Fraud Reports
+        </h1>
+        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+          Unified view of all detected academic fraud cases.
+        </p>
       </div>
 
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
-
-      {/* Summary Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Cases"
-          value={reports.length}
-          icon={FileText}
-          color="primary"
-        />
-        <StatCard
-          title="Critical Cases"
-          value={criticalCases.length}
-          icon={AlertTriangle}
-          color="danger"
-        />
-        <StatCard
-          title="Pending Review"
-          value={pendingCases.length}
-          icon={Clock}
-          color="warning"
-        />
-        <StatCard
-          title="Under Investigation"
-          value={investigatingCases.length}
-          icon={Search}
-          color="info"
-        />
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.875rem', marginBottom: '1.5rem' }}>
+        {[
+          { label: 'Total Cases',     value: stats.total,     bg: '#fdf4ff', color: '#7c3aed', Icon: Shield        },
+          { label: 'Quiz Violations', value: stats.quiz,      bg: '#fff7ed', color: '#ea580c', Icon: AlertTriangle },
+          { label: 'Marksheet Fraud', value: stats.marksheet, bg: '#fee2e2', color: '#dc2626', Icon: XCircle       },
+        ].map(({ label, value, bg, color, Icon }) => (
+          <div key={label} style={{
+            background: '#fff', borderRadius: 14, padding: '1rem 1.25rem',
+            border: '1px solid #ede9fe', boxShadow: '0 1px 4px rgba(109,40,217,0.06)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <div style={{ width: 30, height: 30, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon size={14} color={color} />
+              </div>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {label}
+              </span>
+            </div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#1a0836', lineHeight: 1 }}>{value}</div>
+          </div>
+        ))}
       </div>
 
       {/* Filters */}
-      <Card className="p-4">
-        <div className="flex items-center gap-4">
-          <Filter className="text-gray-400 w-5 h-5" />
+      <div style={{
+        background: '#fff', borderRadius: 12, padding: '0.875rem 1rem',
+        border: '1px solid #ede9fe', marginBottom: '1rem',
+        display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center',
+      }}>
+        <div style={{
+          flex: 1, minWidth: 180, display: 'flex', alignItems: 'center', gap: '0.5rem',
+          background: '#f8f7ff', borderRadius: 8, padding: '0.45rem 0.75rem',
+          border: '1px solid #ede9fe',
+        }}>
+          <Search size={14} color="#9ca3af" />
+          <input
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search by student name or ID..."
+            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.83rem', color: '#374151', width: '100%' }}
+          />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <Filter size={13} color="#9ca3af" />
           <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            value={typeFilter}
+            onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
+            style={{ border: '1px solid #ede9fe', borderRadius: 8, padding: '0.45rem 0.625rem', fontSize: '0.83rem', color: '#374151', background: '#f8f7ff', outline: 'none' }}
           >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="investigating">Investigating</option>
-            <option value="resolved">Resolved</option>
-            <option value="dismissed">Dismissed</option>
-          </select>
-
-          <select
-            value={filterRisk}
-            onChange={(e) => setFilterRisk(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">All Risk Levels</option>
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="critical">Critical</option>
+            {TYPES.map((t) => <option key={t} value={t}>{t === 'all' ? 'All Types' : t}</option>)}
           </select>
         </div>
-      </Card>
+      </div>
 
-      {/* Fraud Reports Table */}
-      <Card>
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Fraud Cases ({filteredReports.length})
-          </h2>
+      {/* Table */}
+      <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ede9fe', overflow: 'hidden', boxShadow: '0 1px 4px rgba(109,40,217,0.06)' }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: '2fr 1.4fr 2fr 3fr 0.9fr 1.6fr',
+          padding: '0.75rem 1.25rem', background: '#faf9ff', borderBottom: '1px solid #ede9fe',
+          fontSize: '0.7rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em',
+        }}>
+          <span>Student</span><span>Fraud Type</span><span>Violations</span><span>Description</span><span>Severity</span><span>Date</span>
         </div>
-        {filteredReports.length === 0 ? (
-          <div className="text-center py-12">
-            <AlertTriangle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Fraud Reports Found</h3>
-            <p className="text-gray-600">
-              {reports.length === 0 
-                ? 'There are no fraud reports in the system yet.' 
-                : 'No reports match the selected filters.'}
-            </p>
+
+        {error && (
+          <div style={{ padding: '1.5rem', textAlign: 'center', color: '#dc2626', fontSize: '0.85rem' }}>
+            <AlertTriangle size={16} style={{ marginRight: 6 }} />{error}
+          </div>
+        )}
+
+        {loading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1.4fr 2fr 3fr 0.9fr 1.6fr', padding: '1rem 1.25rem', borderBottom: '1px solid #f3f4f6', gap: '0.5rem' }}>
+              {Array.from({ length: 6 }).map((__, j) => (
+                <div key={j} style={{ height: 14, borderRadius: 6, background: '#f3f4f6', animation: 'fr-pulse 1.4s ease-in-out infinite', animationDelay: `${j * 0.1}s` }} />
+              ))}
+            </div>
+          ))
+        ) : paginated.length === 0 ? (
+          <div style={{ padding: '3rem', textAlign: 'center' }}>
+            <Shield size={36} color="#e5e7eb" style={{ marginBottom: '0.75rem' }} />
+            <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.875rem' }}>No fraud cases found.</p>
           </div>
         ) : (
-          <Table columns={columns} data={filteredReports} />
+          paginated.map((c, i) => {
+            const tc = typeConf(c.fraudType);
+            const { Icon } = tc;
+            return (
+              <div key={`${c._id}-${i}`} style={{
+                display: 'grid', gridTemplateColumns: '2fr 1.4fr 2fr 3fr 0.9fr 1.6fr',
+                padding: '0.875rem 1.25rem', borderBottom: '1px solid #f9f8ff',
+                alignItems: 'center', gap: '0.25rem', transition: 'background 0.1s',
+              }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#faf9ff'}
+                onMouseLeave={(e) => e.currentTarget.style.background = ''}
+              >
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.83rem', fontWeight: 700, color: '#1a0836' }}>{c.studentName}</p>
+                  <p style={{ margin: '0.1rem 0 0', fontSize: '0.72rem', color: '#9ca3af' }}>{c.studentId}</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                  <div style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, background: tc.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon size={11} color={tc.color} />
+                  </div>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 600, color: tc.color }}>{c.fraudType}</span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem' }}>
+                  {c.topViolations.length > 0 ? c.topViolations.slice(0, 3).map((v, vi) => (
+                    <span key={vi} style={{ fontSize: '0.62rem', padding: '0.15rem 0.4rem', borderRadius: 999, background: '#ede9fe', color: '#7c3aed', fontWeight: 600, textTransform: 'capitalize' }}>{v}</span>
+                  )) : <span style={{ fontSize: '0.72rem', color: '#d1d5db' }}>--</span>}
+                </div>
+                <p style={{ margin: 0, fontSize: '0.78rem', color: '#6b7280', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                  {c.description}
+                </p>
+                <SeverityBadge level={c.severity} />
+                <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{fmtDate(c.date)}</span>
+              </div>
+            );
+          })
         )}
-      </Card>
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
+            Showing {(page - 1) * LIMIT + 1}--{Math.min(page * LIMIT, cases.length)} of {cases.length}
+          </span>
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}
+              style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid #ede9fe', background: '#fff', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.4 : 1 }}>
+              <ChevronLeft size={14} />
+            </button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const pg = Math.max(1, Math.min(totalPages - 4, page - 2)) + i;
+              return (
+                <button key={pg} onClick={() => setPage(pg)}
+                  style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${pg === page ? '#7c3aed' : '#ede9fe'}`, background: pg === page ? '#7c3aed' : '#fff', color: pg === page ? '#fff' : '#374151', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>
+                  {pg}
+                </button>
+              );
+            })}
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
+              style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid #ede9fe', background: '#fff', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.4 : 1 }}>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+      <style>{`@keyframes fr-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }`}</style>
     </div>
   );
 };

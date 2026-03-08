@@ -12,11 +12,26 @@ router.get('/questions', testController.getQuestions);
 // Sessions
 router.post('/sessions', testController.startSession);
 router.get('/sessions/:id', testController.getSessionDetail);
+router.get('/sessions/:id/heartbeat', testController.getSessionHeartbeat);
 router.put('/sessions/:id/submit', testController.submitSession);
 router.post('/sessions/:id/fraud', testController.logFraudEvent);
 
 // Results
 router.get('/my-results', testController.getMyResults);
+
+// Admin / Faculty: all quiz results
+router.get(
+  '/results/all',
+  authorize('admin', 'faculty'),
+  testController.getAllTestResults
+);
+
+// Admin / Faculty: quiz fraud cases (flagged sessions)
+router.get(
+  '/fraud-cases',
+  authorize('admin', 'faculty'),
+  testController.getQuizFraudCases
+);
 
 // Admin / Faculty proctoring dashboard
 router.get(

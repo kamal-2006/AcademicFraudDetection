@@ -1,6 +1,7 @@
 const Question = require('../models/Question');
 const TestSession = require('../models/TestSession');
 const TestFraudLog = require('../models/TestFraudLog');
+const User = require('../models/User');
 
 // GET /api/test/questions
 exports.getQuestions = async (req, res) => {
@@ -46,6 +47,9 @@ exports.startSession = async (req, res) => {
       questions: questionIds,
       totalMarks: questionIds.length,
     });
+
+    // Track this session as the user's active quiz session (for concurrent-login detection)
+    await User.findByIdAndUpdate(userId, { activeSessionId: session._id });
 
     await TestFraudLog.create({
       sessionId: session._id,
@@ -107,6 +111,9 @@ exports.submitSession = async (req, res) => {
     session.status = session.fraudCount > 3 ? 'flagged' : 'submitted';
     await session.save();
 
+    // Release the active session lock so another login is no longer a fraud signal
+    await User.findByIdAndUpdate(userId, { activeSessionId: null });
+
     await TestFraudLog.create({
       sessionId: session._id,
       userId,
@@ -131,6 +138,7 @@ exports.logFraudEvent = async (req, res) => {
       'multiple_faces', 'no_face', 'fullscreen_exit',
       'camera_disabled', 'tab_switch', 'noise_detected',
       'looking_left', 'looking_right', 'looking_up', 'looking_down', 'head_turned_away',
+      'copy_paste', 'devtools_open',
       'session_start', 'session_end', 'terminated',
     ];
     if (!VALID_EVENTS.includes(eventType)) {
@@ -164,6 +172,8 @@ exports.logFraudEvent = async (req, res) => {
     if (scoreNow >= 100 || eventType === 'terminated') {
       session.status = 'flagged';
       session.terminated = true;
+      // Release the active session lock when terminated by proctoring
+      await User.findByIdAndUpdate(session.userId, { activeSessionId: null });
     }
     await session.save();
 
@@ -216,6 +226,59 @@ exports.getSessionDetail = async (req, res) => {
   }
 };
 
+// GET /api/test/results/all — faculty/admin: all completed quiz sessions
+exports.getAllTestResults = async (req, res) => {
+  try {
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(100, parseInt(req.query.limit) || 20);
+    const skip  = (page - 1) * limit;
+
+    const filter = { status: { $in: ['submitted', 'flagged'] } };
+    if (req.query.status && ['submitted', 'flagged'].includes(req.query.status)) {
+      filter.status = req.query.status;
+    }
+
+    if (req.query.search) {
+      const users = await User.find({
+        $or: [
+          { name:      { $regex: req.query.search, $options: 'i' } },
+          { studentId: { $regex: req.query.search, $options: 'i' } },
+          { email:     { $regex: req.query.search, $options: 'i' } },
+        ],
+      }).select('_id');
+      filter.userId = { $in: users.map((u) => u._id) };
+    }
+
+    const [results, total, allSummary] = await Promise.all([
+      TestSession.find(filter, { answers: 0 })
+        .populate('userId', 'name email studentId')
+        .sort({ submittedAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      TestSession.countDocuments(filter),
+      TestSession.find(
+        { status: { $in: ['submitted', 'flagged'] } },
+        { percentageScore: 1, status: 1, fraudScore: 1, duration: 1 }
+      ),
+    ]);
+
+    const avgScore = allSummary.length
+      ? Math.round(allSummary.reduce((s, r) => s + (r.percentageScore || 0), 0) / allSummary.length)
+      : 0;
+    const passCount    = allSummary.filter((r) => (r.percentageScore || 0) >= 50).length;
+    const flaggedCount = allSummary.filter((r) => r.status === 'flagged').length;
+
+    res.json({
+      success: true,
+      data: results,
+      stats: { total: allSummary.length, avgScore, passCount, flaggedCount },
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // GET /api/test/proctoring/logs — faculty/admin: all fraud logs across sessions
 exports.getAllProctoringLogs = async (req, res) => {
   try {
@@ -226,6 +289,18 @@ exports.getAllProctoringLogs = async (req, res) => {
     const filter = {};
     if (req.query.eventType) filter.eventType = req.query.eventType;
     if (req.query.userId)    filter.userId    = req.query.userId;
+
+    // Student name/ID full-text search
+    if (req.query.search) {
+      const matchedUsers = await User.find({
+        $or: [
+          { name:      { $regex: req.query.search, $options: 'i' } },
+          { studentId: { $regex: req.query.search, $options: 'i' } },
+          { email:     { $regex: req.query.search, $options: 'i' } },
+        ],
+      }).select('_id');
+      filter.userId = { $in: matchedUsers.map((u) => u._id) };
+    }
 
     const [logs, total] = await Promise.all([
       TestFraudLog.find(filter)
@@ -321,5 +396,72 @@ exports.analyzeFrame = async (req, res) => {
       return res.json({ success: true, data: { available: false, face_count: null, head_pose: null, alerts: [], violations: [] } });
     }
     return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// GET /api/test/sessions/:id/heartbeat — lightweight poll endpoint for TakeTest frontend.
+// Returns current session status fields so the client can detect remote termination
+// (e.g. concurrent login fraud) without fetching the full session + questions.
+exports.getSessionHeartbeat = async (req, res) => {
+  try {
+    const session = await TestSession.findOne(
+      { _id: req.params.id, userId: req.user._id },
+      { status: 1, terminated: 1, fraudScore: 1, fraudCount: 1, concurrentLoginDetected: 1 },
+    );
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Session not found' });
+    }
+    res.json({ success: true, data: session });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GET /api/test/fraud-cases — admin/faculty: all flagged sessions as fraud case list
+exports.getQuizFraudCases = async (req, res) => {
+  try {
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(100, parseInt(req.query.limit) || 20);
+    const skip  = (page - 1) * limit;
+
+    const filter = { status: 'flagged' };
+    if (req.query.search) {
+      const users = await User.find({
+        $or: [
+          { name:      { $regex: req.query.search, $options: 'i' } },
+          { studentId: { $regex: req.query.search, $options: 'i' } },
+          { email:     { $regex: req.query.search, $options: 'i' } },
+        ],
+      }).select('_id');
+      filter.userId = { $in: users.map((u) => u._id) };
+    }
+
+    const [sessions, total] = await Promise.all([
+      TestSession.find(filter, { answers: 0 })
+        .populate('userId', 'name email studentId')
+        .sort({ updatedAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      TestSession.countDocuments(filter),
+    ]);
+
+    // Attach fraud log highlights (top violations per session)
+    const enriched = await Promise.all(
+      sessions.map(async (s) => {
+        const topLogs = await TestFraudLog.find(
+          { sessionId: s._id, pointsAdded: { $gt: 0 } },
+          { eventType: 1, pointsAdded: 1, timestamp: 1, details: 1 },
+        ).sort({ timestamp: 1 }).limit(5);
+        return { session: s.toObject(), topViolations: topLogs };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: enriched,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

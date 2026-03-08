@@ -33,6 +33,8 @@ const FRAUD_POINTS = {
   looking_up:       10,
   looking_down:     10,
   head_turned_away: 15,
+  copy_paste:       15,
+  devtools_open:    30,
 };
 const FRAUD_THRESHOLD = 100; // auto-terminate at or above this
 
@@ -45,13 +47,15 @@ const EVENT_MSGS = {
   no_face:          '⚠ No face detected — please stay in view.',
   fullscreen_exit:  '⚠ You exited fullscreen. Returning…',
   camera_disabled:  '⚠ Camera unavailable.',
-  tab_switch:       '⚠ Tab switch detected.',
+  tab_switch:       '🚨 Tab/window switch detected — this has been logged as academic fraud.',
   noise_detected:   '⚠ Noise detected near microphone.',
   looking_left:     '⚠ Head turned left — please face the screen.',
   looking_right:    '⚠ Head turned right — please face the screen.',
   looking_up:       '⚠ Looking upward detected — please face the screen.',
   looking_down:     '⚠ Looking downward detected — avoid reading notes.',
   head_turned_away: '⚠ Head turned completely away from screen.',
+  copy_paste:       '🚨 Copy/paste action detected — this has been logged as academic fraud.',
+  devtools_open:    '🚨 Developer tools access detected — this has been logged.',
 };
 
 // ── Fraud warning toast (local) ──────────────────────────────────
@@ -125,6 +129,9 @@ const TakeTest = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [violationLog, setViolationLog] = useState([]);
   const [headPoseDir, setHeadPoseDir]   = useState('straight');
+  const [concurrentLoginDetected, setConcurrentLoginDetected] = useState(false);
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [showTabWarning, setShowTabWarning] = useState(false);
   // 'straight' | 'left' | 'right' | 'up' | 'down' | 'head_turned_away' | 'unknown'
 
   /* ─ Verification gate state ─ */
@@ -148,12 +155,52 @@ const TakeTest = () => {
   const fraudScoreRef    = useRef(0);
   const lastEventTime    = useRef({});
   const terminatingRef   = useRef(false);
-  const lookAwayStartRef = useRef(null);   // timestamp when gaze first left screen
-  const pyAnalysisTimer  = useRef(null);   // periodic Python-service snapshot interval
+  const lookAwayStartRef   = useRef(null);   // timestamp when gaze first left screen
+  const pyAnalysisTimer    = useRef(null);   // periodic Python-service snapshot interval
+  const heartbeatTimer     = useRef(null);   // concurrent-login polling interval
+  const tabSwitchCountRef  = useRef(0);      // cumulative tab/window switches
 
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   useEffect(() => { fraudScoreRef.current = fraudScore; }, [fraudScore]);
+
+  /* ──────────────────────────────────────────────────────────────
+     Heartbeat polling — detect concurrent login from another device
+     Polls GET /api/test/sessions/:id/heartbeat every 10s during EXAM.
+     If concurrentLoginDetected is true the session was already flagged
+     server-side; we transition to the terminated screen immediately.
+  ────────────────────────────────────────────────────────────── */
+  useEffect(() => {
+    if (phase !== PHASES.EXAM || !sessionId) {
+      clearInterval(heartbeatTimer.current);
+      return;
+    }
+
+    const checkHeartbeat = async () => {
+      try {
+        const res = await api.get(`/test/sessions/${sessionId}/heartbeat`);
+        const s = res.data.data;
+        if (s.concurrentLoginDetected) {
+          // Another device logged in — session was terminated server-side
+          clearInterval(heartbeatTimer.current);
+          clearInterval(detectTimer.current);
+          clearInterval(noiseTimer.current);
+          clearInterval(clockTimer.current);
+          clearInterval(pyAnalysisTimer.current);
+          streamRef.current?.getTracks().forEach((t) => t.stop());
+          streamRef.current = null;
+          setCameraReady(false);
+          if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+          setConcurrentLoginDetected(true);
+          setPhase(PHASES.TERMINATED);
+        }
+      } catch { /* silent — network blip does not terminate the exam */ }
+    };
+
+    heartbeatTimer.current = setInterval(checkHeartbeat, 10_000);
+    return () => clearInterval(heartbeatTimer.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, sessionId]);
 
   /* ──────────────────────────────────────────────────────────────
      Re-attach camera stream whenever a new video element mounts
@@ -229,6 +276,7 @@ const TakeTest = () => {
       clearInterval(noiseTimer.current);
       clearInterval(clockTimer.current);
       clearInterval(pyAnalysisTimer.current);
+      clearInterval(heartbeatTimer.current);
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
       setCameraReady(false);
@@ -443,7 +491,7 @@ const TakeTest = () => {
   }, [phase, micReady, startNoiseDetection]);
 
   /* ──────────────────────────────────────────────────────────────
-     Fullscreen + visibility event listeners
+     Fullscreen + visibility + focus + keyboard + context-menu
   ────────────────────────────────────────────────────────────── */
   useEffect(() => {
     const onFsChange = () => {
@@ -454,17 +502,118 @@ const TakeTest = () => {
         // Do NOT auto-re-enter; the pause overlay lets the student return manually
       }
     };
+
+    // Tab switch — browser tab hidden (Ctrl+Tab, clicking another tab)
     const onVisibility = () => {
       if (document.hidden && phaseRef.current === PHASES.EXAM) {
-        handleFraudEvent('tab_switch', 'Student switched away from exam tab');
+        tabSwitchCountRef.current += 1;
+        setTabSwitchCount(tabSwitchCountRef.current);
+        setShowTabWarning(true);
+        handleFraudEvent(
+          'tab_switch',
+          `Tab switch #${tabSwitchCountRef.current} — student left exam tab`,
+        );
       }
+    };
+
+    // Window blur — application-level focus loss (Alt+Tab, clicking taskbar, etc.)
+    // Only fires when document is still visible (tab switch already handled above)
+    const onWindowBlur = () => {
+      if (phaseRef.current === PHASES.EXAM && !document.hidden) {
+        tabSwitchCountRef.current += 1;
+        setTabSwitchCount(tabSwitchCountRef.current);
+        setShowTabWarning(true);
+        handleFraudEvent(
+          'tab_switch',
+          `Window focus lost #${tabSwitchCountRef.current} — student switched to another application`,
+        );
+      }
+    };
+
+    // Warn before leaving / refreshing the page during exam
+    const onBeforeUnload = (e) => {
+      if (phaseRef.current === PHASES.EXAM) {
+        e.preventDefault();
+        // Standard way to trigger browser's built-in leave confirmation
+        e.returnValue = 'Leaving this page will end your exam. Are you sure?';
+        return e.returnValue;
+      }
+    };
+
+    // Block common devtools & view-source shortcuts
+    const onKeyDown = (e) => {
+      if (phaseRef.current !== PHASES.EXAM) return;
+      const ctrl  = e.ctrlKey || e.metaKey;
+      const shift = e.shiftKey;
+      const key   = e.key.toUpperCase();
+      // Block copy / paste / cut via keyboard
+      if (ctrl && ['C', 'V', 'X', 'A'].includes(key)) {
+        e.preventDefault();
+        if (['C', 'V', 'X'].includes(key)) {
+          handleFraudEvent('copy_paste', `Keyboard ${key === 'C' ? 'copy' : key === 'V' ? 'paste' : 'cut'} detected`);
+        }
+        return;
+      }
+      if (
+        e.key === 'F12' ||
+        (ctrl && shift && ['I', 'J', 'K'].includes(key)) ||
+        (ctrl && key === 'U')
+      ) {
+        e.preventDefault();
+        handleFraudEvent('devtools_open', 'Developer tools shortcut detected');
+      }
+    };
+
+    // Block clipboard copy/cut/paste events (e.g. right-click menu, Edit menu)
+    const onCopy = (e) => {
+      if (phaseRef.current === PHASES.EXAM) {
+        e.preventDefault();
+        handleFraudEvent('copy_paste', 'Copy action detected');
+      }
+    };
+    const onPaste = (e) => {
+      if (phaseRef.current === PHASES.EXAM) {
+        e.preventDefault();
+        handleFraudEvent('copy_paste', 'Paste action detected');
+      }
+    };
+    const onCut = (e) => {
+      if (phaseRef.current === PHASES.EXAM) {
+        e.preventDefault();
+        handleFraudEvent('copy_paste', 'Cut action detected');
+      }
+    };
+    // Prevent text selection
+    const onSelectStart = (e) => {
+      if (phaseRef.current === PHASES.EXAM) e.preventDefault();
+    };
+
+    // Prevent right-click context menu during exam
+    const onContextMenu = (e) => {
+      if (phaseRef.current === PHASES.EXAM) e.preventDefault();
     };
 
     document.addEventListener('fullscreenchange', onFsChange);
     document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('blur', onWindowBlur);
+    window.addEventListener('beforeunload', onBeforeUnload);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('contextmenu', onContextMenu);
+    document.addEventListener('copy',        onCopy);
+    document.addEventListener('paste',       onPaste);
+    document.addEventListener('cut',         onCut);
+    document.addEventListener('selectstart', onSelectStart);
     return () => {
       document.removeEventListener('fullscreenchange', onFsChange);
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('blur', onWindowBlur);
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('contextmenu', onContextMenu);
+      document.removeEventListener('copy',        onCopy);
+      document.removeEventListener('paste',       onPaste);
+      document.removeEventListener('cut',         onCut);
+      document.removeEventListener('selectstart', onSelectStart);
     };
   }, [handleFraudEvent]);
 
@@ -572,6 +721,7 @@ const TakeTest = () => {
     clearInterval(noiseTimer.current);
     clearInterval(clockTimer.current);
     clearInterval(pyAnalysisTimer.current);
+    clearInterval(heartbeatTimer.current);
 
     const payload = questions.map((q) => ({
       questionId: q._id,
@@ -608,6 +758,7 @@ const TakeTest = () => {
     clearInterval(noiseTimer.current);
     clearInterval(clockTimer.current);
     clearInterval(pyAnalysisTimer.current);
+    clearInterval(heartbeatTimer.current);
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     setPhase(PHASES.PRE);
     setQuestions([]);
@@ -623,6 +774,10 @@ const TakeTest = () => {
     setResult(null);
     setViolationLog([]);
     setHeadPoseDir('straight');
+    setConcurrentLoginDetected(false);
+    setTabSwitchCount(0);
+    setShowTabWarning(false);
+    tabSwitchCountRef.current = 0;
     lookAwayStartRef.current = null;
     setError('');
     setVerifyFaceOk(false);
@@ -901,6 +1056,54 @@ const TakeTest = () => {
      RENDER: TERMINATED
   ══════════════════════════════════════════════════════════════ */
   if (phase === PHASES.TERMINATED) {
+    // ── Concurrent login variant ──────────────────────────────────
+    if (concurrentLoginDetected) {
+      return (
+        <div>
+          <div className="stu-card" style={{ maxWidth: 540, textAlign: 'center' }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: '50%', background: '#fff7ed',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 1.25rem',
+            }}>
+              <Shield size={36} color="#ea580c" />
+            </div>
+
+            <h2 style={{ margin: '0 0 0.375rem', fontSize: '1.35rem', fontWeight: 800, color: '#ea580c' }}>
+              Session Terminated — Concurrent Login Detected
+            </h2>
+            <p style={{ margin: '0 0 1.5rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.6 }}>
+              A login was detected from{' '}
+              <strong style={{ color: '#ea580c' }}>another device or browser</strong> while
+              your quiz was in progress. Your session has been automatically flagged and
+              terminated. This incident has been logged and will be reviewed by faculty.
+            </p>
+
+            <div style={{
+              background: '#fff7ed', border: '1.5px solid #fed7aa', borderRadius: 12,
+              padding: '1rem 1.25rem', marginBottom: '1.5rem', textAlign: 'left',
+            }}>
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', fontWeight: 700, color: '#9a3412', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                What happened?
+              </p>
+              <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.825rem', color: '#78350f', lineHeight: 1.65 }}>
+                <li>Your account was signed in on a second device while this quiz was active.</li>
+                <li>The system treats this as a potential academic integrity violation.</li>
+                <li>Your answers up to this point were not saved.</li>
+                <li>Please contact your faculty if you believe this was an error.</li>
+              </ul>
+            </div>
+
+            <button className="stu-btn-secondary" onClick={resetAll}>
+              <RotateCcw size={14} />
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Normal fraud-score termination variant ─────────────────────
     return (
       <div>
         <div className="stu-card" style={{ maxWidth: 540, textAlign: 'center' }}>
@@ -1045,6 +1248,59 @@ const TakeTest = () => {
         position: 'fixed', inset: 0, zIndex: 9999,
         background: '#f8f7ff', overflowY: 'auto',
       }}>
+
+        {/* ── Tab-switch / window-focus warning overlay ── */}
+        {showTabWarning && isFullscreen && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 10001,
+            background: 'rgba(15,0,30,0.93)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <div style={{
+              background: '#fff', borderRadius: 20, padding: '2.5rem',
+              textAlign: 'center', maxWidth: 440, margin: '1rem',
+              boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
+              border: '3px solid #dc2626',
+            }}>
+              <div style={{
+                width: 72, height: 72, borderRadius: '50%', background: '#fee2e2',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 1.25rem',
+              }}>
+                <AlertTriangle size={34} color="#dc2626" />
+              </div>
+              <h2 style={{ margin: '0 0 0.5rem', color: '#dc2626', fontSize: '1.25rem', fontWeight: 800 }}>
+                Tab Switch Detected!
+              </h2>
+              <p style={{ color: '#4b5563', fontSize: '0.875rem', lineHeight: 1.65, margin: '0 0 0.75rem' }}>
+                You switched away from the exam window. This violation has been{' '}
+                <strong style={{ color: '#dc2626' }}>logged as academic fraud</strong>{' '}
+                and added to your proctoring record.
+              </p>
+              <div style={{
+                background: '#fff5f5', border: '1px solid #fecaca',
+                borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1.5rem',
+              }}>
+                <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#dc2626', lineHeight: 1 }}>
+                  {tabSwitchCount}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 2 }}>
+                  tab switch{tabSwitchCount !== 1 ? 'es' : ''} recorded this session
+                </div>
+              </div>
+              <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '0 0 1.25rem' }}>
+                Repeated violations will result in automatic exam termination.
+              </p>
+              <button
+                className="stu-btn-primary"
+                onClick={() => setShowTabWarning(false)}
+                style={{ margin: '0 auto', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', background: 'linear-gradient(135deg, #dc2626, #b91c1c)' }}
+              >
+                I Understand — Return to Exam
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ── Fullscreen enforcement overlay ── */}
         {!isFullscreen && (

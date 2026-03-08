@@ -2,110 +2,109 @@
 import { useNavigate } from 'react-router-dom';
 import {
   Users, AlertTriangle, FileText, ShieldAlert,
-  TrendingUp, CheckCircle, XCircle, Clock,
-  RefreshCw, ChevronRight, Copy,
+  TrendingUp, CheckCircle, XCircle, Clock, RefreshCw, ChevronRight,
+  Shield, FileX,
 } from 'lucide-react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  Legend, ResponsiveContainer, Cell,
+  BarChart, Bar, LineChart, Line, ComposedChart,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, Cell, PieChart, Pie,
 } from 'recharts';
 import Loading from '../components/Loading';
 import Alert from '../components/Alert';
 import api from '../api/axios';
 
-// â”€â”€ Palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Palette ───────────────────────────────────────────────────────────
 const C = {
-  purple: '#7c3aed',
-  green:  '#10b981',
-  orange: '#f59e0b',
-  red:    '#ef4444',
-  blue:   '#3b82f6',
-  gray:   '#6b7280',
-  red2:   '#dc2626',
+  purple: '#7c3aed', green: '#10b981', orange: '#f59e0b',
+  red: '#ef4444', blue: '#3b82f6', gray: '#6b7280',
+  teal: '#0d9488',
 };
 
-// â”€â”€ Stat Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Reusable components ───────────────────────────────────────────────
 const StatCard = ({ icon: Icon, title, value, sub, accent = C.purple, onClick }) => (
   <div
     onClick={onClick}
     style={{
-      background: '#fff', borderRadius: 14, padding: '1.25rem 1.5rem',
+      background: '#fff', borderRadius: 16, padding: '1.5rem',
       borderLeft: `4px solid ${accent}`,
-      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+      boxShadow: '0 2px 8px rgba(79,42,170,0.05), 0 1px 2px rgba(0,0,0,0.04)',
       display: 'flex', alignItems: 'center', gap: '1rem',
-      cursor: onClick ? 'pointer' : 'default', transition: 'box-shadow 0.15s',
+      cursor: onClick ? 'pointer' : 'default', transition: 'transform 0.15s, box-shadow 0.15s',
     }}
-    onMouseEnter={(e) => onClick && (e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.1)')}
-    onMouseLeave={(e) => onClick && (e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)')}
+    onMouseEnter={(e) => onClick && Object.assign(e.currentTarget.style, { transform: 'translateY(-2px)', boxShadow: '0 6px 18px rgba(79,42,170,0.1)' })}
+    onMouseLeave={(e) => onClick && Object.assign(e.currentTarget.style, { transform: 'translateY(0)', boxShadow: '0 2px 8px rgba(79,42,170,0.05)' })}
   >
-    <div style={{
-      width: 48, height: 48, borderRadius: 12, flexShrink: 0,
-      background: `${accent}18`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      <Icon size={22} color={accent} />
+    <div style={{ width: 50, height: 50, borderRadius: 13, flexShrink: 0, background: `${accent}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Icon size={24} color={accent} />
     </div>
     <div style={{ minWidth: 0 }}>
-      <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        {title}
-      </p>
-      <p style={{ margin: '0.15rem 0 0', fontSize: '1.75rem', fontWeight: 900, color: '#111827', lineHeight: 1.1 }}>
-        {value ?? 'â€“'}
-      </p>
+      <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</p>
+      <p style={{ margin: '0.1rem 0 0', fontSize: '1.85rem', fontWeight: 900, color: '#0f172a', lineHeight: 1.1, letterSpacing: '-0.04em' }}>{value ?? '—'}</p>
       {sub && <p style={{ margin: '0.2rem 0 0', fontSize: '0.72rem', color: C.gray }}>{sub}</p>}
     </div>
   </div>
 );
 
-// â”€â”€ Chart card wrapper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const MetricTile = ({ icon: Icon, label, value, color }) => (
+  <div style={{ background: '#fff', borderRadius: 14, padding: '1.1rem', boxShadow: '0 2px 8px rgba(79,42,170,0.05)', display: 'flex', alignItems: 'center', gap: '0.875rem', border: '1.5px solid #f1f5f9' }}>
+    <div style={{ width: 40, height: 40, borderRadius: 11, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <Icon size={18} color={color} />
+    </div>
+    <div>
+      <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, color: '#0f172a', lineHeight: 1, letterSpacing: '-0.03em' }}>{value ?? '—'}</p>
+      <p style={{ margin: '0.15rem 0 0', fontSize: '0.69rem', color: C.gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</p>
+    </div>
+  </div>
+);
+
 const ChartCard = ({ title, subtitle, children }) => (
-  <div style={{ background: '#fff', borderRadius: 14, padding: '1.25rem 1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-    <div style={{ marginBottom: '1rem' }}>
-      <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#111827' }}>{title}</p>
+  <div style={{ background: '#fff', borderRadius: 16, padding: '1.5rem', boxShadow: '0 2px 8px rgba(79,42,170,0.05), 0 1px 2px rgba(0,0,0,0.04)', border: '1.5px solid #f1f5f9' }}>
+    <div style={{ marginBottom: '1.25rem' }}>
+      <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.01em' }}>{title}</p>
       {subtitle && <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: C.gray }}>{subtitle}</p>}
     </div>
     {children}
   </div>
 );
 
-// â”€â”€ Custom tooltip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.625rem 0.875rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '0.625rem 0.875rem', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
       <p style={{ margin: '0 0 0.4rem', fontSize: '0.75rem', fontWeight: 700, color: '#374151' }}>{label}</p>
       {payload.map((p) => (
         <p key={p.dataKey} style={{ margin: '0.15rem 0', fontSize: '0.8rem', color: p.color, fontWeight: 600 }}>
-          {p.name}: <strong>{p.value}</strong>
+          {p.name}: <strong>{typeof p.value === 'number' && p.dataKey === 'avgScore' ? `${p.value}%` : p.value}</strong>
         </p>
       ))}
     </div>
   );
 };
 
-// â”€â”€ Status badge helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const statusBadge = (status, terminated) => {
-  if (terminated)         return { label: 'Terminated', bg: '#fee2e2', color: C.red2 };
-  if (status === 'flagged') return { label: 'Flagged',  bg: '#fef9c3', color: '#92400e' };
+const EmptyChart = ({ text = 'No data available yet.' }) => (
+  <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.gray, fontSize: '0.875rem', background: '#fafaf9', borderRadius: 10 }}>{text}</div>
+);
+
+const sessionBadge = (status, terminated) => {
+  if (terminated)           return { label: 'Terminated', bg: '#fee2e2', color: '#dc2626' };
+  if (status === 'flagged') return { label: 'Flagged',    bg: '#fef9c3', color: '#92400e' };
   return { label: 'Submitted', bg: '#dcfce7', color: '#166534' };
 };
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//  Main Dashboard Component
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════
+//  Dashboard
+// ═══════════════════════════════════════════════════════════════════════
 const Dashboard = () => {
-  const navigate = useNavigate();
-
+  const navigate                    = useNavigate();
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
   const [stats, setStats]           = useState(null);
   const [trends, setTrends]         = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  // â”€â”€ Fetch both stats and trends in one shot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const fetchAll = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    else setRefreshing(true);
+    if (!silent) setLoading(true); else setRefreshing(true);
     setError('');
     try {
       const [statsRes, trendsRes] = await Promise.all([
@@ -124,18 +123,17 @@ const Dashboard = () => {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // â”€â”€ Derived values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const s    = stats || {};
   const perf = s.testPerformance || {};
 
   const testResultsData = [
-    { name: 'Passed',  value: perf.passCount   || 0, color: C.green  },
-    { name: 'Failed',  value: perf.failCount   || 0, color: C.red    },
+    { name: 'Passed',  value: perf.passCount    || 0, color: C.green  },
+    { name: 'Failed',  value: perf.failCount    || 0, color: C.red    },
     { name: 'Flagged', value: perf.flaggedCount || 0, color: C.orange },
   ];
 
-  const fraudTypes = (s.fraudByType || []).map((ft) => ({
-    name: (ft._id || 'Unknown'),
+  const fraudTypes = (s.fraudByType || []).slice(0, 8).map((ft) => ({
+    name:  ft._id || 'Unknown',
     count: ft.count,
   }));
 
@@ -144,12 +142,10 @@ const Dashboard = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
 
-      {/* â”€â”€ Page header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: '#111827', letterSpacing: '-0.02em' }}>
-            Dashboard
-          </h1>
+          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em' }}>Dashboard</h1>
           <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: C.gray }}>
             Academic fraud detection &amp; exam monitoring overview
           </p>
@@ -157,171 +153,210 @@ const Dashboard = () => {
         <button
           onClick={() => fetchAll(true)}
           disabled={refreshing}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 1rem', borderRadius: 8, background: '#f9f8fd', border: '1px solid #e0d9f7', fontSize: '0.8rem', fontWeight: 600, color: C.purple, cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 1rem', borderRadius: 9, background: '#f5f3ff', border: '1.5px solid #ddd6fe', fontSize: '0.8rem', fontWeight: 700, color: C.purple, cursor: 'pointer' }}
         >
-          <RefreshCw size={14} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }} />
-          {refreshing ? 'Refreshingâ€¦' : 'Refresh'}
+          <RefreshCw size={13} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }} />
+          {refreshing ? 'Refreshing…' : 'Refresh'}
         </button>
       </div>
 
       {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
-      {/* â”€â”€ 4 KPI stat cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-        <StatCard icon={Users}        title="Total Students"   value={s.totalStudents ?? 0}    sub="Registered in system"                                                  accent={C.blue}   onClick={() => navigate('/students')} />
-        <StatCard icon={FileText}     title="Tests Conducted"  value={s.totalTestsCompleted ?? 0} sub={`${s.flaggedSessions ?? 0} flagged Â· ${s.terminatedSessions ?? 0} terminated`} accent={C.purple} onClick={() => navigate('/proctoring-logs')} />
-        <StatCard icon={AlertTriangle} title="Fraud Alerts"    value={s.totalFraudAlerts ?? 0}  sub={`${s.recentFraudReports ?? 0} in last 7 days`}                       accent={C.orange} onClick={() => navigate('/fraud-reports')} />
-        <StatCard icon={ShieldAlert}  title="Malpractice Logs" value={s.malpracticeLogs ?? 0}   sub={`${s.activeInvestigations ?? 0} active investigations`}              accent={C.red}    onClick={() => navigate('/fraud-reports')} />
+      {/* ── 4 Primary KPI cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem' }}>
+        <StatCard
+          icon={Users} title="Registered Students" accent={C.blue}
+          value={s.totalStudents ?? 0}
+          sub="Accounts registered on platform"
+          onClick={() => navigate('/students')}
+        />
+        <StatCard
+          icon={FileText} title="Quizzes Completed" accent={C.purple}
+          value={s.totalTestsCompleted ?? 0}
+          sub={`${s.flaggedSessions ?? 0} flagged · ${s.terminatedSessions ?? 0} terminated`}
+          onClick={() => navigate('/proctoring-logs')}
+        />
+        <StatCard
+          icon={Shield} title="Total Fraud Cases" accent={C.red}
+          value={s.totalFraudCases ?? (s.totalFraudAlerts ?? 0)}
+          sub={`${s.flaggedSessions ?? 0} quiz · ${(s.marksheetFake ?? 0) + (s.marksheetSuspicious ?? 0)} marksheet`}
+          onClick={() => navigate('/fraud-reports')}
+        />
+        <StatCard
+          icon={ShieldAlert} title="Proctoring Violations" accent={C.red}
+          value={s.malpracticeLogs ?? 0}
+          sub={`${s.activeInvestigations ?? 0} active investigations`}
+          onClick={() => navigate('/proctoring-logs')}
+        />
       </div>
 
-      {/* â”€â”€ 5 mini metric tiles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
-        {[
-          { label: 'Avg Test Score',    value: `${perf.avgScore    ?? 0}%`, color: C.purple, icon: TrendingUp   },
-          { label: 'Pass Rate',         value: `${perf.passRate    ?? 0}%`, color: C.green,  icon: CheckCircle  },
-          { label: 'Flagged Sessions',  value: perf.flaggedCount   ?? 0,   color: C.orange, icon: AlertTriangle },
-          { label: 'Terminated',        value: s.terminatedSessions ?? 0,  color: C.red,    icon: XCircle      },
-          { label: 'Pending Review',    value: s.activeInvestigations ?? 0, color: C.blue,  icon: Clock        },
-          { label: 'Assignments',       value: s.totalAssignments  ?? 0,   color: C.purple, icon: FileText     },
-          { label: 'Plagiarism Cases',  value: s.plagiarismCasesCount ?? 0, color: C.red,   icon: Copy         },
-        ].map(({ label, value, color, icon: Icon }) => (
-          <div key={label} style={{ background: '#fff', borderRadius: 12, padding: '1rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem', textAlign: 'center' }}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon size={16} color={color} />
-            </div>
-            <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#111827', lineHeight: 1 }}>{value}</span>
-            <span style={{ fontSize: '0.7rem', color: C.gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
-          </div>
-        ))}
+      {/* ── 6 Secondary metric tiles ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))', gap: '0.875rem' }}>
+        <MetricTile icon={TrendingUp}    color={C.purple}  label="Avg Quiz Score"      value={`${perf.avgScore    ?? 0}%`} />
+        <MetricTile icon={CheckCircle}   color={C.green}   label="Pass Rate"           value={`${perf.passRate    ?? 0}%`} />
+        <MetricTile icon={XCircle}       color={C.red}     label="Terminated Exams"    value={s.terminatedSessions    ?? 0} />
+        <MetricTile icon={FileX}         color={C.red}     label="Fake Marksheets"     value={s.marksheetFake         ?? 0} />
+        <MetricTile icon={AlertTriangle} color={C.orange}  label="Suspicious Marks"    value={s.marksheetSuspicious   ?? 0} />
+        <MetricTile icon={FileText}      color={C.teal}    label="Plagiarism Cases"     value={s.plagiarismCasesCount  ?? 0} />
       </div>
 
-      {/* â”€â”€ Charts row 1 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1.25rem' }}>
-        <ChartCard title="Fraud Events Over Time" subtitle="Monthly malpractice violations logged (last 6 months)">
+      {/* ── Charts row 1: Quiz Activity & Student Registrations ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.25rem' }}>
+        <ChartCard
+          title="Quiz Activity — Last 6 Months"
+          subtitle="Completed tests vs flagged sessions and average score trend"
+        >
           {trends.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={240}>
+              <ComposedChart data={trends} barSize={16}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="left"  tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} domain={[0, 100]} unit="%" />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend wrapperStyle={{ fontSize: '0.78rem' }} />
+                <Bar    yAxisId="left"  dataKey="testsTotal"   name="Total Tests"  fill={C.blue}   radius={[4, 4, 0, 0]} />
+                <Bar    yAxisId="left"  dataKey="testsFlagged" name="Flagged"      fill={C.orange} radius={[4, 4, 0, 0]} />
+                <Line   yAxisId="right" dataKey="avgScore"     name="Avg Score"    stroke={C.purple} strokeWidth={2.5} dot={{ r: 3, fill: C.purple }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          ) : <EmptyChart text="No quiz data in the last 6 months." />}
+        </ChartCard>
+
+        <ChartCard
+          title="Student Registrations — Last 6 Months"
+          subtitle="New student accounts registered on the platform each month"
+        >
+          {trends.length > 0 ? (
+            <ResponsiveContainer width="100%" height={240}>
               <BarChart data={trends} barSize={28}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ fontSize: '0.78rem' }} />
-                <Bar dataKey="fraudEvents" name="Fraud Events" fill={C.red} radius={[5, 5, 0, 0]} />
+                <Bar dataKey="newStudents" name="New Registrations" radius={[5, 5, 0, 0]}>
+                  {trends.map((_, i) => <Cell key={i} fill={i === trends.length - 1 ? C.purple : '#a78bfa'} />)}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
-          ) : (
-            <p style={{ padding: '2rem 0', textAlign: 'center', color: C.gray, fontSize: '0.875rem' }}>No trend data available yet.</p>
-          )}
-        </ChartCard>
-
-        <ChartCard title="Tests Conducted Over Time" subtitle="Monthly test completions and flagged sessions (last 6 months)">
-          {trends.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={trends} barSize={18}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ fontSize: '0.78rem' }} />
-                <Bar dataKey="testsTotal"   name="Total Tests" fill={C.blue}   radius={[5, 5, 0, 0]} />
-                <Bar dataKey="testsFlagged" name="Flagged"     fill={C.orange} radius={[5, 5, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <p style={{ padding: '2rem 0', textAlign: 'center', color: C.gray, fontSize: '0.875rem' }}>No trend data available yet.</p>
-          )}
+          ) : <EmptyChart text="No registration data in the last 6 months." />}
         </ChartCard>
       </div>
 
-      {/* â”€â”€ Charts row 2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Charts row 2: Test Results + Fraud Type Distribution ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.25rem' }}>
-        <ChartCard title="Test Results Summary" subtitle="Breakdown of all completed test sessions">
-          <ResponsiveContainer width="100%" height={200}>
+        <ChartCard title="Quiz Results Breakdown" subtitle="Passed vs failed vs flagged across all completed sessions">
+          <ResponsiveContainer width="100%" height={190}>
             <BarChart data={testResultsData} layout="vertical" barSize={22}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: '#374151', fontWeight: 600 }} width={70} axisLine={false} tickLine={false} />
+              <XAxis type="number"   tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: '#374151', fontWeight: 600 }} width={65} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="value" name="Sessions" radius={[0, 5, 5, 0]}>
                 {testResultsData.map((d, i) => <Cell key={i} fill={d.color} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
             {testResultsData.map((d) => (
-              <div key={d.name} style={{ flex: 1, minWidth: 80, textAlign: 'center', background: `${d.color}12`, borderRadius: 8, padding: '0.5rem 0.25rem' }}>
-                <p style={{ margin: 0, fontSize: '1.35rem', fontWeight: 900, color: d.color }}>{d.value}</p>
-                <p style={{ margin: '0.1rem 0 0', fontSize: '0.68rem', color: C.gray, fontWeight: 600, textTransform: 'uppercase' }}>{d.name}</p>
+              <div key={d.name} style={{ flex: 1, textAlign: 'center', background: `${d.color}12`, borderRadius: 10, padding: '0.6rem 0.25rem', border: `1px solid ${d.color}22` }}>
+                <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, color: d.color, lineHeight: 1 }}>{d.value}</p>
+                <p style={{ margin: '0.1rem 0 0', fontSize: '0.68rem', color: C.gray, fontWeight: 700, textTransform: 'uppercase' }}>{d.name}</p>
               </div>
             ))}
           </div>
         </ChartCard>
 
-        <ChartCard title="Fraud Alert Types" subtitle="Distribution of fraud report categories">
+        <ChartCard title="Fraud Type Distribution" subtitle="Breakdown of all fraud cases by category">
           {fraudTypes.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={fraudTypes} layout="vertical" barSize={18}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#374151' }} width={110} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="count" name="Reports" fill={C.purple} radius={[0, 5, 5, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <>
+              <ResponsiveContainer width="100%" height={190}>
+                <BarChart data={fraudTypes} layout="vertical" barSize={18}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
+                  <XAxis type="number"   tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#374151', fontWeight: 600 }} width={120} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="count" name="Cases" radius={[0, 5, 5, 0]}>
+                    {fraudTypes.map((_, i) => {
+                      const colors = [C.red, C.orange, C.purple, C.blue, C.teal, C.green];
+                      return <Cell key={i} fill={colors[i % colors.length]} />;
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </>
           ) : (
-            <p style={{ padding: '2rem 0', textAlign: 'center', color: C.gray, fontSize: '0.875rem' }}>No fraud reports recorded yet.</p>
+            <EmptyChart text="No fraud cases recorded yet." />
           )}
         </ChartCard>
       </div>
 
-      {/* â”€â”€ Recent Flagged Sessions table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Proctoring Violations Trend ── */}
+      <ChartCard title="Proctoring Violations Trend" subtitle="Monthly fraud events detected during quizzes (last 6 months)">
+        {trends.length > 0 ? (
+          <ResponsiveContainer width="100%" height={190}>
+            <LineChart data={trends}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Line dataKey="fraudEvents" name="Violations" stroke={C.red} strokeWidth={2.5} dot={{ r: 4, fill: C.red }} activeDot={{ r: 6 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : <EmptyChart text="No violation data in the last 6 months." />}
+      </ChartCard>
+
+      {/* ── Recent Flagged Sessions ── */}
       {(s.recentFlaggedSessions?.length > 0) && (
-        <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderBottom: '1px solid #f3f4f6' }}>
+        <div style={{ background: '#fff', borderRadius: 16, overflow: 'hidden', border: '1.5px solid #f1f5f9', boxShadow: '0 2px 8px rgba(79,42,170,0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.1rem 1.5rem', borderBottom: '1px solid #f3f4f6' }}>
             <div>
-              <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#111827' }}>Recent Flagged Test Sessions</p>
-              <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: C.gray }}>Latest sessions flagged or terminated due to malpractice</p>
+              <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>Recent Flagged Quiz Sessions</p>
+              <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: C.gray }}>Latest sessions flagged or terminated due to suspicious activity</p>
             </div>
-            <button onClick={() => navigate('/proctoring-logs')} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', fontWeight: 600, color: C.purple, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+            <button onClick={() => navigate('/proctoring-logs')} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', fontWeight: 700, color: C.purple, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
               View all <ChevronRight size={14} />
             </button>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
-                <tr style={{ background: '#fafaf9' }}>
-                  {['Student', 'Score', 'Fraud Score', 'Violations', 'Status', 'Submitted At'].map((h) => (
-                    <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
+                <tr style={{ background: '#f9f8fd' }}>
+                  {['Student', 'Quiz Score', 'Fraud Score', 'Violations', 'Status', 'Date'].map((h) => (
+                    <th key={h} style={{ padding: '0.75rem 1.1rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', borderBottom: '2px solid #ede9fe' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {s.recentFlaggedSessions.map((session) => {
-                  const badge = statusBadge(session.status, session.terminated);
-                  const name  = session.userName || session.userEmail || 'Unknown';
+                {s.recentFlaggedSessions.map((session, i) => {
+                  const badge = sessionBadge(session.status, session.terminated);
+                  const name  = session.userName || session.userEmail || session.userId?.name || 'Unknown';
                   return (
-                    <tr key={session._id} style={{ borderTop: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: '0.75rem 1rem', color: '#1f2937', fontWeight: 600 }}>{name}</td>
-                      <td style={{ padding: '0.75rem 1rem' }}>
-                        <span style={{ fontWeight: 700, color: (session.percentageScore ?? 0) >= 50 ? C.green : C.red }}>
+                    <tr key={session._id} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 === 0 ? '#fff' : '#faf9fe' }}>
+                      <td style={{ padding: '0.875rem 1.1rem', fontWeight: 700, color: '#0f172a' }}>
+                        {name}
+                        {session.userId?.studentId && (
+                          <div style={{ fontSize: '0.7rem', color: C.purple, fontFamily: 'monospace', fontWeight: 600 }}>{session.userId.studentId}</div>
+                        )}
+                      </td>
+                      <td style={{ padding: '0.875rem 1.1rem' }}>
+                        <span style={{ fontWeight: 800, color: (session.percentageScore ?? 0) >= 50 ? C.green : C.red }}>
                           {session.percentageScore ?? 0}%
                         </span>
                       </td>
-                      <td style={{ padding: '0.75rem 1rem' }}>
-                        <span style={{ fontWeight: 700, color: (session.fraudScore ?? 0) >= 70 ? C.red : (session.fraudScore ?? 0) >= 40 ? C.orange : C.gray }}>
-                          {session.fraudScore ?? 0}<span style={{ fontWeight: 400, color: C.gray }}> / 100</span>
+                      <td style={{ padding: '0.875rem 1.1rem' }}>
+                        <span style={{ fontWeight: 800, color: (session.fraudScore ?? 0) >= 70 ? C.red : (session.fraudScore ?? 0) >= 40 ? C.orange : C.gray }}>
+                          {session.fraudScore ?? 0}<span style={{ fontWeight: 400, color: C.gray }}>/100</span>
                         </span>
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', color: '#6b7280' }}>{session.fraudCount ?? 0}</td>
-                      <td style={{ padding: '0.75rem 1rem' }}>
-                        <span style={{ display: 'inline-block', padding: '0.2rem 0.6rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700, background: badge.bg, color: badge.color }}>
+                      <td style={{ padding: '0.875rem 1.1rem', color: '#6b7280', fontWeight: 600 }}>{session.fraudCount ?? 0}</td>
+                      <td style={{ padding: '0.875rem 1.1rem' }}>
+                        <span style={{ padding: '0.25rem 0.65rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 700, background: badge.bg, color: badge.color }}>
                           {badge.label}
                         </span>
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', color: C.gray, whiteSpace: 'nowrap' }}>
-                        {session.submittedAt
-                          ? new Date(session.submittedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                          : 'â€”'}
+                      <td style={{ padding: '0.875rem 1.1rem', color: '#9ca3af', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+                        {session.submittedAt ? new Date(session.submittedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                       </td>
                     </tr>
                   );
@@ -331,8 +366,6 @@ const Dashboard = () => {
           </div>
         </div>
       )}
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

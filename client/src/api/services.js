@@ -216,6 +216,15 @@ export const fraudReportService = {
   },
 };
 
+// Quiz / Test services (admin)
+export const testService = {
+  getAllResults: async (params = {}) => {
+    const p = new URLSearchParams(params);
+    const response = await api.get(`/test/results/all?${p}`);
+    return response.data;
+  },
+};
+
 // Assignment (submission + plagiarism detection)
 export const assignmentService = {
   submit: async (formData) =>

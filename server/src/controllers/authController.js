@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const TestSession = require('../models/TestSession');
+const TestFraudLog = require('../models/TestFraudLog');
 
 // Generate JWT token
 const generateToken = (userId) => {
@@ -114,6 +116,37 @@ exports.login = async (req, res) => {
     // Generate token
     const token = generateToken(user._id);
 
+    // ── Concurrent-session fraud detection ──────────────────────────
+    // If this user has an active quiz session on another device/tab, flag it.
+    let concurrentLoginFlagged = false;
+    if (user.activeSessionId) {
+      const activeSession = await TestSession.findById(user.activeSessionId);
+      if (activeSession && activeSession.status === 'in-progress') {
+        // Immediately flag and terminate the ongoing quiz session
+        activeSession.fraudCount += 1;
+        activeSession.fraudScore = 100;
+        activeSession.suspicious = true;
+        activeSession.status = 'flagged';
+        activeSession.terminated = true;
+        activeSession.concurrentLoginDetected = true;
+        await activeSession.save();
+
+        await TestFraudLog.create({
+          sessionId: activeSession._id,
+          userId: user._id,
+          eventType: 'concurrent_login',
+          details: `Login attempted from another device/browser while quiz session was active. Session forcibly terminated.`,
+          pointsAdded: 100,
+          fraudScoreAtTime: 100,
+        });
+
+        concurrentLoginFlagged = true;
+      }
+      // Clear the active session pointer (session is now terminated)
+      await User.findByIdAndUpdate(user._id, { activeSessionId: null });
+    }
+    // ───────────────────────────────────────────────────────────────
+
     res.status(200).json({
       success: true,
       message: 'Login successful',
@@ -127,6 +160,7 @@ exports.login = async (req, res) => {
           department: user.department,
         },
         token,
+        concurrentLoginFlagged,
       },
     });
   } catch (error) {
