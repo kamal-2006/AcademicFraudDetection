@@ -35,6 +35,7 @@ exports.getDashboardStats = async (req, res) => {
       recentFlaggedSessions,
       totalAssignments,
       plagiarismCasesCount,
+      highRiskPlagiarismStudents,
       marksheetFake,
       marksheetSuspicious,
       recentMarksheetFraud,
@@ -71,6 +72,7 @@ exports.getDashboardStats = async (req, res) => {
         .select('userName userEmail fraudScore fraudCount percentageScore submittedAt status terminated'),
       Assignment.countDocuments(),
       Assignment.countDocuments({ plagiarismStatus: { $in: ['suspected', 'fraud'] } }),
+      Assignment.distinct('studentId', { riskLevel: 'high' }),
       Marksheet.countDocuments({ status: 'fake' }),
       Marksheet.countDocuments({ status: 'suspicious' }),
       Marksheet.find({ status: { $in: ['fake', 'suspicious'] } })
@@ -122,6 +124,7 @@ exports.getDashboardStats = async (req, res) => {
         recentFlaggedSessions,
         totalAssignments,
         plagiarismCasesCount,
+        highRiskPlagiarismStudents: highRiskPlagiarismStudents.length,
       },
     });
   } catch (error) {

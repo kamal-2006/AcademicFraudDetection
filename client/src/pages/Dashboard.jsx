@@ -2,13 +2,12 @@
 import { useNavigate } from 'react-router-dom';
 import {
   Users, AlertTriangle, FileText, ShieldAlert,
-  TrendingUp, CheckCircle, XCircle, Clock, RefreshCw, ChevronRight,
-  Shield, FileX,
+  RefreshCw, ChevronRight, Shield,
 } from 'lucide-react';
 import {
-  BarChart, Bar, LineChart, Line, ComposedChart,
+  Bar, Line, ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, Cell, PieChart, Pie,
+  ResponsiveContainer,
 } from 'recharts';
 import Loading from '../components/Loading';
 import Alert from '../components/Alert';
@@ -42,18 +41,6 @@ const StatCard = ({ icon: Icon, title, value, sub, accent = C.purple, onClick })
       <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</p>
       <p style={{ margin: '0.1rem 0 0', fontSize: '1.85rem', fontWeight: 900, color: '#0f172a', lineHeight: 1.1, letterSpacing: '-0.04em' }}>{value ?? '—'}</p>
       {sub && <p style={{ margin: '0.2rem 0 0', fontSize: '0.72rem', color: C.gray }}>{sub}</p>}
-    </div>
-  </div>
-);
-
-const MetricTile = ({ icon: Icon, label, value, color }) => (
-  <div style={{ background: '#fff', borderRadius: 14, padding: '1.1rem', boxShadow: '0 2px 8px rgba(79,42,170,0.05)', display: 'flex', alignItems: 'center', gap: '0.875rem', border: '1.5px solid #f1f5f9' }}>
-    <div style={{ width: 40, height: 40, borderRadius: 11, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-      <Icon size={18} color={color} />
-    </div>
-    <div>
-      <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, color: '#0f172a', lineHeight: 1, letterSpacing: '-0.03em' }}>{value ?? '—'}</p>
-      <p style={{ margin: '0.15rem 0 0', fontSize: '0.69rem', color: C.gray, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</p>
     </div>
   </div>
 );
@@ -126,21 +113,10 @@ const Dashboard = () => {
   const s    = stats || {};
   const perf = s.testPerformance || {};
 
-  const testResultsData = [
-    { name: 'Passed',  value: perf.passCount    || 0, color: C.green  },
-    { name: 'Failed',  value: perf.failCount    || 0, color: C.red    },
-    { name: 'Flagged', value: perf.flaggedCount || 0, color: C.orange },
-  ];
-
-  const fraudTypes = (s.fraudByType || []).slice(0, 8).map((ft) => ({
-    name:  ft._id || 'Unknown',
-    count: ft.count,
-  }));
-
   if (loading) return <Loading fullScreen />;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
 
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -162,7 +138,7 @@ const Dashboard = () => {
 
       {error && <Alert type="error" message={error} onClose={() => setError('')} />}
 
-      {/* ── 4 Primary KPI cards ── */}
+      {/* ── Primary KPI cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem' }}>
         <StatCard
           icon={Users} title="Registered Students" accent={C.blue}
@@ -190,120 +166,45 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* ── 6 Secondary metric tiles ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))', gap: '0.875rem' }}>
-        <MetricTile icon={TrendingUp}    color={C.purple}  label="Avg Quiz Score"      value={`${perf.avgScore    ?? 0}%`} />
-        <MetricTile icon={CheckCircle}   color={C.green}   label="Pass Rate"           value={`${perf.passRate    ?? 0}%`} />
-        <MetricTile icon={XCircle}       color={C.red}     label="Terminated Exams"    value={s.terminatedSessions    ?? 0} />
-        <MetricTile icon={FileX}         color={C.red}     label="Fake Marksheets"     value={s.marksheetFake         ?? 0} />
-        <MetricTile icon={AlertTriangle} color={C.orange}  label="Suspicious Marks"    value={s.marksheetSuspicious   ?? 0} />
-        <MetricTile icon={FileText}      color={C.teal}    label="Plagiarism Cases"     value={s.plagiarismCasesCount  ?? 0} />
-      </div>
-
-      {/* ── Charts row 1: Quiz Activity & Student Registrations ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.25rem' }}>
-        <ChartCard
-          title="Quiz Activity — Last 6 Months"
-          subtitle="Completed tests vs flagged sessions and average score trend"
-        >
-          {trends.length > 0 ? (
-            <ResponsiveContainer width="100%" height={240}>
-              <ComposedChart data={trends} barSize={16}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="left"  tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} domain={[0, 100]} unit="%" />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ fontSize: '0.78rem' }} />
-                <Bar    yAxisId="left"  dataKey="testsTotal"   name="Total Tests"  fill={C.blue}   radius={[4, 4, 0, 0]} />
-                <Bar    yAxisId="left"  dataKey="testsFlagged" name="Flagged"      fill={C.orange} radius={[4, 4, 0, 0]} />
-                <Line   yAxisId="right" dataKey="avgScore"     name="Avg Score"    stroke={C.purple} strokeWidth={2.5} dot={{ r: 3, fill: C.purple }} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          ) : <EmptyChart text="No quiz data in the last 6 months." />}
-        </ChartCard>
-
-        <ChartCard
-          title="Student Registrations — Last 6 Months"
-          subtitle="New student accounts registered on the platform each month"
-        >
-          {trends.length > 0 ? (
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={trends} barSize={28}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="newStudents" name="New Registrations" radius={[5, 5, 0, 0]}>
-                  {trends.map((_, i) => <Cell key={i} fill={i === trends.length - 1 ? C.purple : '#a78bfa'} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <EmptyChart text="No registration data in the last 6 months." />}
-        </ChartCard>
-      </div>
-
-      {/* ── Charts row 2: Test Results + Fraud Type Distribution ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.25rem' }}>
-        <ChartCard title="Quiz Results Breakdown" subtitle="Passed vs failed vs flagged across all completed sessions">
-          <ResponsiveContainer width="100%" height={190}>
-            <BarChart data={testResultsData} layout="vertical" barSize={22}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
-              <XAxis type="number"   tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: '#374151', fontWeight: 600 }} width={65} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="value" name="Sessions" radius={[0, 5, 5, 0]}>
-                {testResultsData.map((d, i) => <Cell key={i} fill={d.color} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
-            {testResultsData.map((d) => (
-              <div key={d.name} style={{ flex: 1, textAlign: 'center', background: `${d.color}12`, borderRadius: 10, padding: '0.6rem 0.25rem', border: `1px solid ${d.color}22` }}>
-                <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, color: d.color, lineHeight: 1 }}>{d.value}</p>
-                <p style={{ margin: '0.1rem 0 0', fontSize: '0.68rem', color: C.gray, fontWeight: 700, textTransform: 'uppercase' }}>{d.name}</p>
-              </div>
-            ))}
+      {/* ── Compact summary row ── */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #f1f5f9', boxShadow: '0 2px 8px rgba(79,42,170,0.05)', padding: '1rem 1.25rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: '0.72rem', color: C.gray, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Avg Quiz Score</span>
+            <span style={{ fontSize: '1.15rem', color: '#0f172a', fontWeight: 800 }}>{perf.avgScore ?? 0}%</span>
           </div>
-        </ChartCard>
-
-        <ChartCard title="Fraud Type Distribution" subtitle="Breakdown of all fraud cases by category">
-          {fraudTypes.length > 0 ? (
-            <>
-              <ResponsiveContainer width="100%" height={190}>
-                <BarChart data={fraudTypes} layout="vertical" barSize={18}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
-                  <XAxis type="number"   tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#374151', fontWeight: 600 }} width={120} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" name="Cases" radius={[0, 5, 5, 0]}>
-                    {fraudTypes.map((_, i) => {
-                      const colors = [C.red, C.orange, C.purple, C.blue, C.teal, C.green];
-                      return <Cell key={i} fill={colors[i % colors.length]} />;
-                    })}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </>
-          ) : (
-            <EmptyChart text="No fraud cases recorded yet." />
-          )}
-        </ChartCard>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: '0.72rem', color: C.gray, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Pass Rate</span>
+            <span style={{ fontSize: '1.15rem', color: '#0f172a', fontWeight: 800 }}>{perf.passRate ?? 0}%</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: '0.72rem', color: C.gray, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Suspicious Submissions</span>
+            <span style={{ fontSize: '1.15rem', color: '#0f172a', fontWeight: 800 }}>{s.plagiarismCasesCount ?? 0}</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: '0.72rem', color: C.gray, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>High-Risk Students</span>
+            <span style={{ fontSize: '1.15rem', color: '#0f172a', fontWeight: 800 }}>{s.highRiskPlagiarismStudents ?? 0}</span>
+          </div>
+        </div>
       </div>
 
-      {/* ── Proctoring Violations Trend ── */}
-      <ChartCard title="Proctoring Violations Trend" subtitle="Monthly fraud events detected during quizzes (last 6 months)">
+      {/* ── Primary trend chart ── */}
+      <ChartCard title="Core Activity Trend (Last 6 Months)" subtitle="Total tests, flagged tests, and proctoring violations">
         {trends.length > 0 ? (
-          <ResponsiveContainer width="100%" height={190}>
-            <LineChart data={trends}>
+          <ResponsiveContainer width="100%" height={260}>
+            <ComposedChart data={trends} barSize={16}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <YAxis yAxisId="left" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: C.gray }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Line dataKey="fraudEvents" name="Violations" stroke={C.red} strokeWidth={2.5} dot={{ r: 4, fill: C.red }} activeDot={{ r: 6 }} />
-            </LineChart>
+              <Legend wrapperStyle={{ fontSize: '0.78rem' }} />
+              <Bar yAxisId="left" dataKey="testsTotal" name="Tests" fill={C.blue} radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="left" dataKey="testsFlagged" name="Flagged" fill={C.orange} radius={[4, 4, 0, 0]} />
+              <Line yAxisId="right" dataKey="fraudEvents" name="Violations" stroke={C.red} strokeWidth={2.5} dot={{ r: 3, fill: C.red }} />
+            </ComposedChart>
           </ResponsiveContainer>
-        ) : <EmptyChart text="No violation data in the last 6 months." />}
+        ) : <EmptyChart text="No trend data available yet." />}
       </ChartCard>
 
       {/* ── Recent Flagged Sessions ── */}

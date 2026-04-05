@@ -36,7 +36,7 @@ const STATUS = {
 };
 
 const fmt = (d) =>
-  d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'â€”';
+  d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
 const Plagiarism = () => {
   const [cases,   setCases]   = useState([]);
@@ -99,8 +99,8 @@ const Plagiarism = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
           <StatCard icon={FileText}      title="Total Submissions"    value={stats.totalSubmissions} accent={C.blue}   />
           <StatCard icon={XCircle}       title="Fraud Detected"       value={stats.fraudDetected}    accent={C.red}    sub=">= 80% similarity" />
-          <StatCard icon={AlertTriangle} title="Plagiarism Suspected" value={stats.suspected}        accent={C.orange} sub="50 to 79% similarity" />
-          <StatCard icon={Users}         title="Students Involved"    value={stats.studentsInvolved} accent={C.purple} />
+          <StatCard icon={AlertTriangle} title="Suspicious Cases"     value={stats.suspiciousCases ?? stats.suspected} accent={C.orange} sub="Medium plus high risk" />
+          <StatCard icon={Users}         title="High-Risk Students"   value={stats.highRiskStudents ?? 0} accent={C.purple} />
         </div>
       )}
 
@@ -120,7 +120,7 @@ const Plagiarism = () => {
           <Search size={15} color={C.gray} />
           <input
             type="text"
-            placeholder="Search by student, title, or subjectâ€¦"
+            placeholder="Search by student, title, or subject..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{ border: 'none', background: 'none', outline: 'none', fontSize: '0.85rem', width: '100%', color: '#111827' }}
@@ -172,7 +172,7 @@ const Plagiarism = () => {
                   const matchNames = (c.matches || [])
                     .sort((a, b) => b.similarity - a.similarity)
                     .slice(0, 3)
-                    .map(m => `${m.studentName} (${m.similarity}%)`)
+                    .map(m => `${m.studentName} (${m.similarity}% | d=${m.hammingDistance})`)
                     .join(', ');
                   return (
                     <tr key={c._id} style={{ borderTop: '1px solid #f3f4f6' }}>
@@ -186,11 +186,11 @@ const Plagiarism = () => {
                       <td style={{ padding: '0.75rem 1rem', color: '#374151' }}>{c.subject}</td>
                       <td style={{ padding: '0.75rem 1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: c.highestSimilarity >= 80 ? C.red : c.highestSimilarity >= 50 ? C.orange : C.green }}>
-                            {c.highestSimilarity}%
+                          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: c.plagiarismScore >= 80 ? C.red : c.plagiarismScore >= 60 ? C.orange : C.green }}>
+                            {Number(c.plagiarismScore || 0).toFixed(2)}%
                           </span>
                           <div style={{ flexShrink: 0, width: 50, height: 5, borderRadius: 3, background: '#f3f4f6', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', borderRadius: 3, width: `${c.highestSimilarity}%`, background: c.highestSimilarity >= 80 ? C.red : c.highestSimilarity >= 50 ? C.orange : C.green }} />
+                            <div style={{ height: '100%', borderRadius: 3, width: `${Number(c.plagiarismScore || 0)}%`, background: c.plagiarismScore >= 80 ? C.red : c.plagiarismScore >= 60 ? C.orange : C.green }} />
                           </div>
                         </div>
                       </td>
@@ -200,7 +200,7 @@ const Plagiarism = () => {
                         </span>
                       </td>
                       <td style={{ padding: '0.75rem 1rem', color: '#6b7280', fontSize: '0.78rem', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {matchNames || 'â€”'}
+                        {matchNames || '-'}
                       </td>
                       <td style={{ padding: '0.75rem 1rem', color: C.gray, whiteSpace: 'nowrap' }}>
                         {fmt(c.submittedAt)}
@@ -216,13 +216,12 @@ const Plagiarism = () => {
 
       {/* Legend */}
       <div style={{ background: '#eff6ff', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid #bfdbfe' }}>
-        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', fontWeight: 700, color: '#1e40af' }}>Similarity Score Guidelines</p>
+        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', fontWeight: 700, color: '#1e40af' }}>SimHash Distance Guidelines</p>
         <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.78rem', color: '#1e40af' }}>
           {[
-            { range: '0 to 29%',   label: 'Acceptable',    color: C.green  },
-            { range: '30 to 49%',  label: 'Monitor',        color: '#65a30d'},
-            { range: '50 to 79%',  label: 'Suspected',      color: C.orange },
-            { range: '80 to 100%', label: 'Fraud Detected', color: C.red    },
+            { range: '0 to 5',   label: 'High Similarity (Fraud)',    color: C.red  },
+            { range: '6 to 15',  label: 'Medium Similarity',           color: C.orange },
+            { range: '> 15',     label: 'Low Similarity',              color: C.green },
           ].map(({ range, label, color }) => (
             <div key={range} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }} />

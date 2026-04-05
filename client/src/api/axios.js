@@ -27,8 +27,11 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      // Handle 401 Unauthorized - redirect to login
-      if (error.response.status === 401) {
+      const requestUrl = error.config?.url || '';
+      const isAuthAttempt = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+
+      // Handle expired/invalid session globally, but do not redirect for login/register failures
+      if (error.response.status === 401 && !isAuthAttempt) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login';

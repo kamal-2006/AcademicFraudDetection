@@ -24,12 +24,27 @@ const StudentHome = () => {
   const [results, setResults]   = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
+  const [assignmentSummary, setAssignmentSummary] = useState({ total: 0, pending: 0, submitted: 0 });
 
   useEffect(() => {
     api.get('/test/my-results')
       .then((r) => setResults(r.data.data || []))
       .catch(() => setError('Could not load test history.'))
       .finally(() => setLoading(false));
+
+    api.get('/assignments/assigned')
+      .then((r) => {
+        const list = r.data.data || [];
+        const submitted = list.filter((a) => a.submitted).length;
+        setAssignmentSummary({
+          total: list.length,
+          submitted,
+          pending: list.length - submitted,
+        });
+      })
+      .catch(() => {
+        setAssignmentSummary({ total: 0, pending: 0, submitted: 0 });
+      });
   }, []);
 
   const totalTests   = results.length;
@@ -109,6 +124,16 @@ const StudentHome = () => {
           </div>
           <div className="stu-stat-label">Flagged Sessions</div>
         </div>
+
+        <div className="stu-stat">
+          <div className="stu-stat-icon" style={{ background: assignmentSummary.pending > 0 ? '#fef3c7' : '#ede9fe' }}>
+            <ClipboardList size={18} color={assignmentSummary.pending > 0 ? '#d97706' : '#7c3aed'} />
+          </div>
+          <div className="stu-stat-value" style={{ color: assignmentSummary.pending > 0 ? '#92400e' : undefined }}>
+            {assignmentSummary.pending}
+          </div>
+          <div className="stu-stat-label">Pending Assignments</div>
+        </div>
       </div>
 
       {/* Alerts */}
@@ -127,6 +152,10 @@ const StudentHome = () => {
         <button className="stu-btn-primary" onClick={() => navigate('/student-dashboard/test')}>
           <PlayCircle size={16} />
           Start New Test
+        </button>
+        <button className="stu-btn-primary" onClick={() => navigate('/student-dashboard/assignments')}>
+          <ClipboardList size={16} />
+          View Assignments ({assignmentSummary.total})
         </button>
       </div>
 

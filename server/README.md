@@ -38,6 +38,31 @@ MONGODB_URI=mongodb://localhost:27017/academic_fraud_detection
 CLIENT_URL=http://localhost:5174
 ```
 
+## MongoDB Migration (Old URI -> New URI)
+
+Use the built-in migration script to copy all collections from your old MongoDB URI to your new URI with per-collection document count checks.
+
+1. Set migration environment variables (PowerShell example):
+
+```powershell
+$env:OLD_MONGO_URI="mongodb://localhost:27017/iafds"
+$env:NEW_MONGO_URI="mongodb+srv://<user>:<password>@<cluster>/<db>?retryWrites=true&w=majority"
+$env:MIGRATION_DROP_TARGET="true"
+```
+
+2. Run migration:
+
+```bash
+npm run migrate:db
+```
+
+3. Update your `.env` to point `MONGO_URI` to the new URI and restart the server.
+
+Notes:
+- `MIGRATION_DROP_TARGET=true` (default) clears each target collection before copy to avoid duplicates and allows strict source/target count validation.
+- The script recreates source indexes (except default `_id`) on the target.
+- Keep a backup/snapshot before running migration in production.
+
 ## API Endpoints
 
 ### Students

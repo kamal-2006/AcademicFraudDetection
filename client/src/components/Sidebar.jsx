@@ -68,6 +68,7 @@ const Sidebar = () => {
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Students', path: '/students', icon: Users },
     { name: 'Attendance', path: '/attendance', icon: Calendar, adminOnly: true },
+    { name: 'Assignments', path: '/assignments', icon: FileText },
     { name: 'Exam Performance', path: '/exams', icon: FileText },
     { name: 'Plagiarism', path: '/plagiarism', icon: Copy },
     { name: 'Fraud Reports', path: '/fraud-reports', icon: AlertTriangle },

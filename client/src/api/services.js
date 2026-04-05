@@ -230,6 +230,32 @@ export const assignmentService = {
   submit: async (formData) =>
     (await api.post('/assignments', formData, { headers: { 'Content-Type': 'multipart/form-data' } })).data,
 
+  getStudentAssignedAssignments: async () =>
+    (await api.get('/assignments/assigned')).data,
+
+  getLoggedInStudentDetails: async () =>
+    (await api.get('/assignments/student/me')).data,
+
+  getStudentPlagiarismReport: async () =>
+    (await api.get('/assignments/my-report')).data,
+
+  submitAssignedAssignment: async (assignmentId, formData) =>
+    (await api.post(`/assignments/assigned/${assignmentId}/submit`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })).data,
+
+  getAssignableStudents: async () =>
+    (await api.get('/assignments/faculty/students')).data,
+
+  createAssignedAssignment: async (payload) =>
+    (await api.post('/assignments/faculty/assigned', payload)).data,
+
+  getFacultyAssignedAssignments: async () =>
+    (await api.get('/assignments/faculty/assigned')).data,
+
+  getFacultyAssignmentSubmissions: async (assignmentId) =>
+    (await api.get(`/assignments/faculty/assigned/${assignmentId}/submissions`)).data,
+
   getMyAssignments: async () =>
     (await api.get('/assignments/my')).data,
 

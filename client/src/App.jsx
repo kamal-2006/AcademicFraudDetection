@@ -22,6 +22,7 @@ import StudentHome from './pages/StudentHome';
 import TakeTest from './pages/TakeTest';
 import AssignmentSubmission from './pages/AssignmentSubmission';
 import MarksheetUpload from './pages/MarksheetUpload';
+import AssignmentManagement from './pages/AssignmentManagement';
 
 // Layout component for faculty/admin authenticated pages
 const AppLayout = ({ children }) => {
@@ -118,6 +119,16 @@ function App() {
             <ProtectedRoute roles={['faculty', 'admin']}>
               <AppLayout>
                 <Plagiarism />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/assignments"
+          element={
+            <ProtectedRoute roles={['faculty', 'admin']}>
+              <AppLayout>
+                <AssignmentManagement />
               </AppLayout>
             </ProtectedRoute>
           }

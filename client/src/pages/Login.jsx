@@ -266,6 +266,27 @@ const styles = `
 
   .ag-input:disabled { opacity: 0.6; cursor: not-allowed; }
 
+  .ag-input.ag-input-error {
+    border-color: #d96b6b;
+    background: #fff9f9;
+    box-shadow: 0 0 0 3px rgba(217,107,107,0.12);
+  }
+
+  .ag-inline-error {
+    margin-top: -8px;
+    margin-bottom: -2px;
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    font-size: 12.5px;
+    color: #b82c2c;
+    background: #fff5f5;
+    border: 1px solid #fcc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    line-height: 1.35;
+  }
+
   .ag-toggle {
     position: absolute;
     right: 12px;
@@ -465,14 +486,26 @@ const Login = () => {
   const [error, setError]               = useState('');
   const [loading, setLoading]           = useState(false);
 
+  const isEmailValid = (value) => /^\S+@\S+\.\S+$/.test(value);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!email.trim() || !password) { setError('Please fill in all fields'); return; }
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail || !password) { setError('Please fill in all fields.'); return; }
+    if (!isEmailValid(trimmedEmail)) { setError('Please enter a valid email address.'); return; }
     if (!termsChecked) { setError('You must accept the Terms and Conditions to continue'); return; }
+
     setLoading(true);
-    const result = await login(email.trim(), password);
-    if (!result.success) { setError(result.message); setLoading(false); }
+    const result = await login(trimmedEmail, password);
+    if (!result.success) {
+      const normalizedMessage = /invalid|credential|email|password|unauthorized|401/i.test(result.message)
+        ? 'Invalid email or password'
+        : result.message;
+      setError(normalizedMessage);
+      setLoading(false);
+    }
   };
 
   const toggleTerms = () => { setTermsChecked(v => !v); setError(''); };
@@ -517,13 +550,6 @@ const Login = () => {
               </div>
             )}
 
-            {error && (
-              <div className="ag-alert ag-alert-error" role="alert">
-                <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-                <span>{error}</span>
-              </div>
-            )}
-
             <form onSubmit={handleSubmit} className="ag-form" noValidate>
               {/* Email */}
               <div className="ag-field">
@@ -531,7 +557,7 @@ const Login = () => {
                 <div className="ag-input-wrap">
                   <span className="ag-input-icon"><Mail size={15} /></span>
                   <input
-                    type="email" id="login-email" className="ag-input"
+                    type="email" id="login-email" className={`ag-input${error ? ' ag-input-error' : ''}`}
                     placeholder="you@example.com" value={email}
                     onChange={e => { setEmail(e.target.value); setError(''); }}
                     disabled={loading} autoComplete="email" autoFocus
@@ -546,7 +572,7 @@ const Login = () => {
                   <span className="ag-input-icon"><Lock size={15} /></span>
                   <input
                     type={showPassword ? 'text' : 'password'} id="login-password"
-                    className="ag-input" placeholder="Enter your password" value={password}
+                    className={`ag-input${error ? ' ag-input-error' : ''}`} placeholder="Enter your password" value={password}
                     onChange={e => { setPassword(e.target.value); setError(''); }}
                     disabled={loading} autoComplete="current-password"
                   />
@@ -559,6 +585,13 @@ const Login = () => {
                   </button>
                 </div>
               </div>
+
+              {error && (
+                <div className="ag-inline-error" role="alert" aria-live="polite">
+                  <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span>{error}</span>
+                </div>
+              )}
 
               {/* Terms */}
               <div>

@@ -66,9 +66,12 @@ const marksheetUpload = multer({
 const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
+      const isAssignmentUpload = req.originalUrl?.includes('/assignments');
       return res.status(400).json({
         success: false,
-        message: 'File too large. Maximum file size is 5MB.',
+        message: isAssignmentUpload
+          ? 'File too large. Maximum file size is 10MB.'
+          : 'File too large. Maximum file size is 5MB.',
       });
     }
     return res.status(400).json({
