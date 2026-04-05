@@ -222,9 +222,6 @@ const fraudReportSchema = new mongoose.Schema(
 
 // Indexes for efficient querying
 fraudReportSchema.index({ studentId: 1, fraudType: 1 });
-fraudReportSchema.index({ detectionTimestamp: -1 });
-fraudReportSchema.index({ riskScore: -1 });
-fraudReportSchema.index({ status: 1 });
 
 // Pre-save middleware to calculate risk level based on risk score
 fraudReportSchema.pre('save', function (next) {

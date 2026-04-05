@@ -62,13 +62,13 @@ const StudentHome = () => {
       <div className="stu-welcome">
         <div>
           <h1 className="stu-welcome-title">
-            {greeting}, {user?.name?.split(' ')[0] ?? 'Student'}! 👋
+            {greeting}, {user?.name?.split(' ')[0] ?? 'Student'}
           </h1>
           <p className="stu-welcome-sub">
             Here&apos;s your academic overview. Ready to take a test?
           </p>
           {user?.studentId && (
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.78rem', color: '#7c3aed' }}>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.78rem', color: '#64748b' }}>
               Student ID: <strong>{user.studentId}</strong>
             </p>
           )}
@@ -92,44 +92,44 @@ const StudentHome = () => {
       {/* Stats */}
       <div className="stu-stats-grid">
         <div className="stu-stat">
-          <div className="stu-stat-icon" style={{ background: '#ede9fe' }}>
-            <ClipboardList size={18} color="#7c3aed" />
+          <div className="stu-stat-icon">
+            <ClipboardList size={18} color="#334155" />
           </div>
           <div className="stu-stat-value">{totalTests}</div>
           <div className="stu-stat-label">Tests Taken</div>
         </div>
 
         <div className="stu-stat">
-          <div className="stu-stat-icon" style={{ background: '#d1fae5' }}>
-            <TrendingUp size={18} color="#059669" />
+          <div className="stu-stat-icon">
+            <TrendingUp size={18} color="#334155" />
           </div>
           <div className="stu-stat-value">{avgScore !== null ? `${avgScore}%` : '—'}</div>
           <div className="stu-stat-label">Average Score</div>
         </div>
 
         <div className="stu-stat">
-          <div className="stu-stat-icon" style={{ background: '#fef3c7' }}>
-            <Award size={18} color="#d97706" />
+          <div className="stu-stat-icon">
+            <Award size={18} color="#334155" />
           </div>
           <div className="stu-stat-value">{bestScore !== null ? `${bestScore}%` : '—'}</div>
           <div className="stu-stat-label">Best Score</div>
         </div>
 
         <div className="stu-stat">
-          <div className="stu-stat-icon" style={{ background: flaggedCount > 0 ? '#fee2e2' : '#f0fdf4' }}>
-            <AlertTriangle size={18} color={flaggedCount > 0 ? '#dc2626' : '#16a34a'} />
+          <div className="stu-stat-icon">
+            <AlertTriangle size={18} color="#334155" />
           </div>
-          <div className="stu-stat-value" style={{ color: flaggedCount > 0 ? '#dc2626' : undefined }}>
+          <div className="stu-stat-value">
             {flaggedCount}
           </div>
           <div className="stu-stat-label">Flagged Sessions</div>
         </div>
 
         <div className="stu-stat">
-          <div className="stu-stat-icon" style={{ background: assignmentSummary.pending > 0 ? '#fef3c7' : '#ede9fe' }}>
-            <ClipboardList size={18} color={assignmentSummary.pending > 0 ? '#d97706' : '#7c3aed'} />
+          <div className="stu-stat-icon">
+            <ClipboardList size={18} color="#334155" />
           </div>
-          <div className="stu-stat-value" style={{ color: assignmentSummary.pending > 0 ? '#92400e' : undefined }}>
+          <div className="stu-stat-value">
             {assignmentSummary.pending}
           </div>
           <div className="stu-stat-label">Pending Assignments</div>
@@ -162,7 +162,7 @@ const StudentHome = () => {
       {/* Test History */}
       <div className="stu-card">
         <h3 className="stu-card-title">
-          <Clock size={15} color="#7c3aed" />
+          <Clock size={15} color="#475569" />
           Test History
         </h3>
 
@@ -183,7 +183,7 @@ const StudentHome = () => {
             color: '#9ca3af',
             fontSize: '0.875rem',
           }}>
-            <ClipboardList size={36} color="#ddd6fe" style={{ margin: '0 auto 0.75rem', display: 'block' }} />
+            <ClipboardList size={36} color="#cbd5e1" style={{ margin: '0 auto 0.75rem', display: 'block' }} />
             <p style={{ margin: 0 }}>No tests taken yet.</p>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem' }}>
               Click <strong>Start New Test</strong> to begin.

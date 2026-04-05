@@ -23,8 +23,8 @@ const SEV = {
 
 const TYPE_CONF = {
   'Quiz Violation':       { bg: '#fdf4ff', color: '#7c3aed', Icon: Shield        },
-  'Fake Marksheet':       { bg: '#fee2e2', color: '#991b1b', Icon: XCircle       },
-  'Suspicious Marksheet': { bg: '#fff7ed', color: '#9a3412', Icon: AlertTriangle  },
+  'Fake Certificate':       { bg: '#fee2e2', color: '#991b1b', Icon: XCircle       },
+  'Suspicious Certificate': { bg: '#fff7ed', color: '#9a3412', Icon: AlertTriangle  },
   'Plagiarism':           { bg: '#fef9c3', color: '#92400e', Icon: FileText      },
   'default':              { bg: '#f8f7ff', color: '#374151', Icon: AlertTriangle  },
 };
@@ -41,7 +41,7 @@ const SeverityBadge = ({ level = 'low' }) => {
 };
 
 const LIMIT = 15;
-const TYPES = ['all', 'Quiz Violation', 'Fake Marksheet', 'Suspicious Marksheet'];
+const TYPES = ['all', 'Quiz Violation', 'Fake Certificate', 'Suspicious Certificate'];
 
 const FraudReports = () => {
   const [cases,      setCases]      = useState([]);
@@ -50,7 +50,7 @@ const FraudReports = () => {
   const [search,     setSearch]     = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [page,       setPage]       = useState(1);
-  const [stats,      setStats]      = useState({ quiz: 0, marksheet: 0, total: 0 });
+  const [stats,      setStats]      = useState({ quiz: 0, certificate: 0, total: 0 });
   const searchTimer = useRef(null);
 
   const fetchData = useCallback(async (q, type, pg) => {
@@ -60,9 +60,9 @@ const FraudReports = () => {
       const base = new URLSearchParams({ page: pg, limit: LIMIT });
       if (q) base.set('search', q);
 
-      const [quizRes, markRes] = await Promise.all([
+      const [quizRes, certRes] = await Promise.all([
         api.get(`/test/fraud-cases?${base}`),
-        api.get(`/marksheets?page=${pg}&limit=${LIMIT}${q ? `&search=${encodeURIComponent(q)}` : ''}`),
+        api.get(`/certificates?page=${pg}&limit=${LIMIT}${q ? `&search=${encodeURIComponent(q)}` : ''}`),
       ]);
 
       const quizCases = (quizRes.data.data || []).map((item) => {
@@ -84,27 +84,27 @@ const FraudReports = () => {
         };
       });
 
-      const allMark = (markRes.data?.data || []);
-      const markCases = allMark
-        .filter((m) => m.status === 'fake' || m.status === 'suspicious')
+      const allCertificates = (certRes.data?.data || []);
+      const certificateCases = allCertificates
+        .filter((m) => m.verificationStatus === 'likely_fake' || m.verificationStatus === 'suspicious')
         .map((m) => ({
           _id:           m._id,
-          fraudType:     m.status === 'fake' ? 'Fake Marksheet' : 'Suspicious Marksheet',
+          fraudType:     m.verificationStatus === 'likely_fake' ? 'Fake Certificate' : 'Suspicious Certificate',
           studentName:   m.studentName  || 'Unknown',
           studentId:     m.studentId    || '--',
           studentEmail:  m.studentEmail || '',
-          description:   m.verdict      || 'GPA discrepancy detected.',
-          severity:      m.status === 'fake' ? 'critical' : 'medium',
+          description:   `${m.verificationSummary || 'Certificate verification needs review.'} Fraud score: ${m.fraudScore ?? 0}/100`,
+          severity:      m.verificationStatus === 'likely_fake' ? 'critical' : 'medium',
           date:          m.uploadedAt,
           topViolations: [],
         }));
 
-      let combined = [...quizCases, ...markCases]
+      let combined = [...quizCases, ...certificateCases]
         .sort((a, b) => new Date(b.date) - new Date(a.date));
       if (type !== 'all') combined = combined.filter((c) => c.fraudType === type);
 
       setCases(combined);
-      setStats({ quiz: quizCases.length, marksheet: markCases.length, total: combined.length });
+      setStats({ quiz: quizCases.length, certificate: certificateCases.length, total: combined.length });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load fraud reports.');
       setCases([]);
@@ -138,7 +138,7 @@ const FraudReports = () => {
         {[
           { label: 'Total Cases',     value: stats.total,     bg: '#fdf4ff', color: '#7c3aed', Icon: Shield        },
           { label: 'Quiz Violations', value: stats.quiz,      bg: '#fff7ed', color: '#ea580c', Icon: AlertTriangle },
-          { label: 'Marksheet Fraud', value: stats.marksheet, bg: '#fee2e2', color: '#dc2626', Icon: XCircle       },
+          { label: 'Certificate Fraud', value: stats.certificate, bg: '#fee2e2', color: '#dc2626', Icon: XCircle       },
         ].map(({ label, value, bg, color, Icon }) => (
           <div key={label} style={{
             background: '#fff', borderRadius: 14, padding: '1rem 1.25rem',

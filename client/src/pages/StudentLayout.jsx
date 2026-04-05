@@ -7,7 +7,7 @@ const NAV = [
   { label: 'Dashboard',    path: '/student-dashboard',              icon: LayoutDashboard },
   { label: 'Take Test',    path: '/student-dashboard/test',         icon: ClipboardList   },
   { label: 'Assignments',  path: '/student-dashboard/assignments',  icon: Upload          },
-  { label: 'Marksheet',    path: '/student-dashboard/marksheet',    icon: FileCheck       },
+  { label: 'Certificates', path: '/student-dashboard/certificates', icon: FileCheck       },
 ];
 
 const StudentLayout = () => {

@@ -158,8 +158,8 @@ const AssignmentSubmission = () => {
 
       <div style={{ background: '#fff', borderRadius: 14, padding: '1.5rem', boxShadow: '0 1px 6px rgba(0,0,0,0.07)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem' }}>
-          <div style={{ width: 34, height: 34, borderRadius: 9, background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Upload size={16} color="#7c3aed" />
+          <div style={{ width: 34, height: 34, borderRadius: 9, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Upload size={16} color="#334155" />
           </div>
           <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: '#111827' }}>Submit Assignment</p>
         </div>
@@ -211,8 +211,8 @@ const AssignmentSubmission = () => {
                     gap: '0.75rem',
                     padding: '0.7rem 0.875rem',
                     borderRadius: 8,
-                    border: `1px solid ${file ? '#7c3aed' : '#d1d5db'}`,
-                    background: file ? '#f5f3ff' : '#fafafa',
+                    border: `1px solid ${file ? '#64748b' : '#d1d5db'}`,
+                    background: file ? '#f8fafc' : '#fafafa',
                     cursor: 'pointer',
                     minHeight: 42,
                   }}
@@ -224,8 +224,8 @@ const AssignmentSubmission = () => {
                     onChange={handleFileChange}
                     style={{ display: 'none' }}
                   />
-                  <Upload size={16} color={file ? '#7c3aed' : '#6b7280'} />
-                  <span style={{ fontSize: '0.84rem', color: file ? '#5b21b6' : '#6b7280' }}>
+                  <Upload size={16} color={file ? '#334155' : '#6b7280'} />
+                  <span style={{ fontSize: '0.84rem', color: file ? '#334155' : '#6b7280' }}>
                     {file ? `${file.name} (${(file.size / 1024).toFixed(1)} KB)` : 'Choose PDF, DOCX, or TXT'}
                   </span>
                 </label>
@@ -250,7 +250,7 @@ const AssignmentSubmission = () => {
                 alignSelf: 'flex-start',
                 padding: '0.65rem 1.5rem',
                 borderRadius: 9,
-                background: submitting ? '#c4b5fd' : '#7c3aed',
+                background: submitting ? '#cbd5e1' : '#1e293b',
                 color: '#fff',
                 border: 'none',
                 fontSize: '0.875rem',
@@ -266,7 +266,7 @@ const AssignmentSubmission = () => {
 
       <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 1px 6px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
         <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <BookOpen size={16} color="#7c3aed" />
+          <BookOpen size={16} color="#475569" />
           <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: '#111827' }}>My Assigned Tasks</p>
           <span style={{ marginLeft: 'auto', background: '#f3f4f6', borderRadius: 20, padding: '0.15rem 0.6rem', fontSize: '0.75rem', fontWeight: 700, color: '#374151' }}>
             {assigned.length}
@@ -375,9 +375,9 @@ const AssignmentSubmission = () => {
         )}
       </div>
 
-      <div style={{ background: '#eff6ff', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid #bfdbfe', display: 'flex', gap: '0.75rem' }}>
-        <Clock size={16} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
-        <div style={{ fontSize: '0.82rem', color: '#1e40af' }}>
+      <div style={{ background: '#f8fafc', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid #e2e8f0', display: 'flex', gap: '0.75rem' }}>
+        <Clock size={16} color="#475569" style={{ flexShrink: 0, marginTop: 2 }} />
+        <div style={{ fontSize: '0.82rem', color: '#475569' }}>
           <strong>Submission Policy</strong><br />
           Submit before due date to avoid rejection. SimHash fraud checks run automatically: Hamming distance 0 to 5 is high risk, 6 to 15 is medium risk, and greater than 15 is low risk.
         </div>

@@ -6,7 +6,7 @@ const ExamPerformance = require('../models/ExamPerformance');
 const TestSession   = require('../models/TestSession');
 const TestFraudLog  = require('../models/TestFraudLog');
 const Assignment    = require('../models/Assignment');
-const Marksheet     = require('../models/Marksheet');
+const Certificate   = require('../models/Certificate');
 
 // ── Shared month-key helpers ─────────────────────────────────────────
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -36,9 +36,9 @@ exports.getDashboardStats = async (req, res) => {
       totalAssignments,
       plagiarismCasesCount,
       highRiskPlagiarismStudents,
-      marksheetFake,
-      marksheetSuspicious,
-      recentMarksheetFraud,
+      certificateLikelyFake,
+      certificateSuspicious,
+      recentCertificateFraud,
     ] = await Promise.all([
       // Only count users who registered via the website with role = student
       User.countDocuments({ role: 'student' }),
@@ -73,30 +73,40 @@ exports.getDashboardStats = async (req, res) => {
       Assignment.countDocuments(),
       Assignment.countDocuments({ plagiarismStatus: { $in: ['suspected', 'fraud'] } }),
       Assignment.distinct('studentId', { riskLevel: 'high' }),
-      Marksheet.countDocuments({ status: 'fake' }),
-      Marksheet.countDocuments({ status: 'suspicious' }),
-      Marksheet.find({ status: { $in: ['fake', 'suspicious'] } })
+      Certificate.countDocuments({ verificationStatus: 'likely_fake' }),
+      Certificate.countDocuments({ verificationStatus: 'suspicious' }),
+      Certificate.find({ verificationStatus: { $in: ['likely_fake', 'suspicious'] } })
         .sort({ uploadedAt: -1 })
         .limit(5)
-        .select('studentName studentId studentEmail status verdict uploadedAt'),
+        .select('studentName studentId studentEmail verificationStatus verificationSummary fraudScore uploadedAt'),
     ]);
 
     const perf     = testScoreAgg[0] || { avgScore: 0, passCount: 0, failCount: 0, total: 0 };
     const passRate = perf.total > 0 ? Math.round((perf.passCount / perf.total) * 100) : 0;
 
-    // Build a unified fraud-type distribution that includes quiz & marksheet violations
+    // Build a unified fraud-type distribution that includes quiz and certificate violations.
     const fraudTypeMap = {};
     fraudByType.forEach((f) => { fraudTypeMap[f._id] = f.count; });
     if (flaggedSessions > 0)   fraudTypeMap['Quiz Violation']    = (fraudTypeMap['Quiz Violation']    || 0) + flaggedSessions;
-    if (marksheetFake > 0)     fraudTypeMap['Fake Marksheet']    = (fraudTypeMap['Fake Marksheet']    || 0) + marksheetFake;
-    if (marksheetSuspicious > 0) fraudTypeMap['Suspicious Marksheet'] = (fraudTypeMap['Suspicious Marksheet'] || 0) + marksheetSuspicious;
+    if (certificateLikelyFake > 0) {
+      fraudTypeMap['Fake Certificate'] = (fraudTypeMap['Fake Certificate'] || 0) + certificateLikelyFake;
+    }
+    if (certificateSuspicious > 0) {
+      fraudTypeMap['Suspicious Certificate'] =
+        (fraudTypeMap['Suspicious Certificate'] || 0) + certificateSuspicious;
+    }
     if (plagiarismCasesCount > 0) fraudTypeMap['Plagiarism']    = (fraudTypeMap['Plagiarism']          || 0) + plagiarismCasesCount;
 
     const unifiedFraudByType = Object.entries(fraudTypeMap)
       .map(([_id, count]) => ({ _id, count }))
       .sort((a, b) => b.count - a.count);
 
-    const totalUnifiedFraudCases = flaggedSessions + marksheetFake + marksheetSuspicious + plagiarismCasesCount + totalFraudReports;
+    const totalUnifiedFraudCases =
+      flaggedSessions +
+      certificateLikelyFake +
+      certificateSuspicious +
+      plagiarismCasesCount +
+      totalFraudReports;
 
     res.json({
       success: true,
@@ -110,9 +120,9 @@ exports.getDashboardStats = async (req, res) => {
         terminatedSessions,
         activeInvestigations,
         recentFraudReports,
-        marksheetFake,
-        marksheetSuspicious,
-        recentMarksheetFraud,
+        certificateLikelyFake,
+        certificateSuspicious,
+        recentCertificateFraud,
         testPerformance: {
           avgScore:     Math.round((perf.avgScore || 0) * 10) / 10,
           passCount:    perf.passCount,

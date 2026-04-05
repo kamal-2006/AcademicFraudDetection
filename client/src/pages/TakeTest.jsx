@@ -15,6 +15,7 @@ const PHASES = {
   PRE:        'pre',        // landing page
   VERIFY:     'verify',     // camera/mic gate — must pass before exam
   SETUP:      'setup',      // fetching questions & creating session
+  CALIBRATE:  'calibrate',  // pre-test eye/attention calibration
   EXAM:       'exam',       // active exam
   TERMINATED: 'terminated', // auto-terminated by fraud score
   DONE:       'done',       // submitted & result shown
@@ -37,6 +38,14 @@ const FRAUD_POINTS = {
   devtools_open:    30,
 };
 const FRAUD_THRESHOLD = 100; // auto-terminate at or above this
+
+const CALIBRATION_DOTS = [
+  { id: 'top-left', top: '12%', left: '8%' },
+  { id: 'top-right', top: '12%', left: '92%' },
+  { id: 'bottom-left', top: '88%', left: '8%' },
+  { id: 'bottom-right', top: '88%', left: '92%' },
+  { id: 'center', top: '50%', left: '50%' },
+];
 
 // ── Helpers ──────────────────────────────────────────────────────
 const fmt = (s) =>
@@ -132,6 +141,7 @@ const TakeTest = () => {
   const [concurrentLoginDetected, setConcurrentLoginDetected] = useState(false);
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const [showTabWarning, setShowTabWarning] = useState(false);
+  const [calibrationClickedDots, setCalibrationClickedDots] = useState([]);
   // 'straight' | 'left' | 'right' | 'up' | 'down' | 'head_turned_away' | 'unknown'
 
   /* ─ Verification gate state ─ */
@@ -285,6 +295,22 @@ const TakeTest = () => {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pushWarning]);
+
+  /* ──────────────────────────────────────────────────────────────
+     Pre-test calibration (5 fixed dots)
+  ────────────────────────────────────────────────────────────── */
+  const handleCalibrationDotClick = useCallback((dotId) => {
+    if (phaseRef.current !== PHASES.CALIBRATE) return;
+
+    setCalibrationClickedDots((prev) => {
+      if (prev.includes(dotId)) return prev;
+      const updated = [...prev, dotId];
+      if (updated.length === CALIBRATION_DOTS.length) {
+        setTimeout(() => setPhase(PHASES.EXAM), 250);
+      }
+      return updated;
+    });
+  }, []);
 
   /* ──────────────────────────────────────────────────────────────
      Camera helpers
@@ -489,6 +515,12 @@ const TakeTest = () => {
     }
     return () => clearInterval(noiseTimer.current);
   }, [phase, micReady, startNoiseDetection]);
+
+  useEffect(() => {
+    if (phase !== PHASES.CALIBRATE) {
+      setCalibrationClickedDots([]);
+    }
+  }, [phase]);
 
   /* ──────────────────────────────────────────────────────────────
      Fullscreen + visibility + focus + keyboard + context-menu
@@ -699,7 +731,8 @@ const TakeTest = () => {
 
       try { await document.documentElement.requestFullscreen(); } catch {}
 
-      setPhase(PHASES.EXAM);
+      setCalibrationClickedDots([]);
+      setPhase(PHASES.CALIBRATE);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to start exam.');
       setPhase(PHASES.VERIFY);
@@ -777,6 +810,7 @@ const TakeTest = () => {
     setConcurrentLoginDetected(false);
     setTabSwitchCount(0);
     setShowTabWarning(false);
+    setCalibrationClickedDots([]);
     tabSwitchCountRef.current = 0;
     lookAwayStartRef.current = null;
     setError('');
@@ -857,6 +891,7 @@ const TakeTest = () => {
             <li>Switching tabs or applications will be flagged.</li>
             <li>Exiting fullscreen mode will be flagged.</li>
             <li>Excessive background noise will be flagged.</li>
+            <li>Before the exam starts, click 5 calibration dots at screen corners and center.</li>
             <li>Looking <strong>left, right, up, or down</strong> for more than 5 seconds will be flagged.</li>
             <li>Head turned <strong>completely away</strong> from the screen will be flagged.</li>
             <li>A <strong>fraud score</strong> accumulates per violation. Reaching <strong>100</strong> auto-terminates the exam.</li>
@@ -1010,7 +1045,7 @@ const TakeTest = () => {
               disabled={!canStart || loading}
               style={{ opacity: (!canStart || loading) ? 0.55 : 1 }}
             >
-              {loading ? 'Starting…' : '🚀 Begin Exam'}
+              {loading ? 'Starting…' : 'Start Calibration'}
             </button>
             <button
               className="stu-btn-secondary"
@@ -1045,9 +1080,71 @@ const TakeTest = () => {
           Preparing exam environment…
         </p>
         <p style={{ color: '#9ca3af', fontSize: '0.8rem' }}>
-          Loading questions and initialising session.
+          Loading questions and preparing your calibration step.
         </p>
         <style>{`@keyframes stu-spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     RENDER: CALIBRATE
+  ══════════════════════════════════════════════════════════════ */
+  if (phase === PHASES.CALIBRATE) {
+    const completed = calibrationClickedDots.length;
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f172a' }}>
+        <video ref={videoRef} autoPlay muted playsInline style={{ display: 'none' }} />
+
+        <div style={{
+          position: 'absolute',
+          top: 20,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(255,255,255,0.95)',
+          borderRadius: 12,
+          padding: '0.85rem 1rem',
+          textAlign: 'center',
+          minWidth: 320,
+          border: '1px solid #e2e8f0',
+        }}>
+          <p style={{ margin: 0, fontSize: '0.86rem', color: '#0f172a', fontWeight: 700 }}>
+            Pre-test Calibration: Click all 5 dots (corners + center)
+          </p>
+          <p style={{ margin: '0.25rem 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+            Completed: {completed}/{CALIBRATION_DOTS.length} · exam starts automatically after all are clicked
+          </p>
+        </div>
+
+        {CALIBRATION_DOTS.map((dot) => {
+          const clicked = calibrationClickedDots.includes(dot.id);
+          return (
+            <button
+              key={dot.id}
+              type="button"
+              onClick={() => handleCalibrationDotClick(dot.id)}
+              disabled={clicked}
+              aria-label={`Calibration dot ${dot.id}`}
+              style={{
+                position: 'absolute',
+                top: dot.top,
+                left: dot.left,
+                transform: 'translate(-50%, -50%)',
+                width: 34,
+                height: 34,
+                borderRadius: '50%',
+                border: '2px solid #ffffff',
+                background: clicked ? '#22c55e' : '#f59e0b',
+                boxShadow: clicked
+                  ? '0 0 0 4px rgba(34,197,94,0.25)'
+                  : '0 0 0 5px rgba(245,158,11,0.3)',
+                cursor: clicked ? 'default' : 'pointer',
+                zIndex: 10002,
+                transition: 'all 0.15s ease',
+              }}
+            />
+          );
+        })}
       </div>
     );
   }

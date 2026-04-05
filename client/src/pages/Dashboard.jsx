@@ -155,7 +155,7 @@ const Dashboard = () => {
         <StatCard
           icon={Shield} title="Total Fraud Cases" accent={C.red}
           value={s.totalFraudCases ?? (s.totalFraudAlerts ?? 0)}
-          sub={`${s.flaggedSessions ?? 0} quiz · ${(s.marksheetFake ?? 0) + (s.marksheetSuspicious ?? 0)} marksheet`}
+          sub={`${s.flaggedSessions ?? 0} quiz · ${(s.certificateLikelyFake ?? 0) + (s.certificateSuspicious ?? 0)} certificates`}
           onClick={() => navigate('/fraud-reports')}
         />
         <StatCard

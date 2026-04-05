@@ -16,7 +16,7 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const plagiarismRoutes   = require('./routes/plagiarismRoutes');
 const testRoutes         = require('./routes/testRoutes');
 const assignmentRoutes   = require('./routes/assignmentRoutes');
-const marksheetRoutes    = require('./routes/marksheetRoutes');
+const certificateRoutes  = require('./routes/certificateRoutes');
 
 app.get("/", (req, res) => {
   res.send("IAFDS Backend API running on port 5000");
@@ -31,7 +31,7 @@ app.use('/api/fraud-reports', fraudRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/plagiarism',   plagiarismRoutes);
 app.use('/api/assignments',  assignmentRoutes);
-app.use('/api/marksheets',   marksheetRoutes);
+app.use('/api/certificates', certificateRoutes);
 app.use('/api/test',         testRoutes);
 
 // Error handling middleware

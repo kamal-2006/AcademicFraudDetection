@@ -21,7 +21,7 @@ import StudentLayout from './pages/StudentLayout';
 import StudentHome from './pages/StudentHome';
 import TakeTest from './pages/TakeTest';
 import AssignmentSubmission from './pages/AssignmentSubmission';
-import MarksheetUpload from './pages/MarksheetUpload';
+import CertificateUpload from './pages/CertificateUpload';
 import AssignmentManagement from './pages/AssignmentManagement';
 
 // Layout component for faculty/admin authenticated pages
@@ -59,7 +59,7 @@ function App() {
           <Route index element={<StudentHome />} />
           <Route path="test"        element={<TakeTest />} />
           <Route path="assignments" element={<AssignmentSubmission />} />
-          <Route path="marksheet"   element={<MarksheetUpload />} />
+          <Route path="certificates" element={<CertificateUpload />} />
         </Route>
 
         {/* ── Faculty / Admin Routes ── */}

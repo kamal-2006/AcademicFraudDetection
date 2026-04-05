@@ -139,6 +139,7 @@ exports.logFraudEvent = async (req, res) => {
       'camera_disabled', 'tab_switch', 'noise_detected',
       'looking_left', 'looking_right', 'looking_up', 'looking_down', 'head_turned_away',
       'copy_paste', 'devtools_open',
+      'attention_dot_hit', 'attention_dot_delayed', 'attention_dot_missed', 'low_attention',
       'session_start', 'session_end', 'terminated',
     ];
     if (!VALID_EVENTS.includes(eventType)) {

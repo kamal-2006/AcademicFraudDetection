@@ -45,21 +45,21 @@ const assignmentUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
 
-// ── Marksheet upload (PDF or TXT – up to 5 MB) ────────────────────────────
-const marksheetFileFilter = (req, file, cb) => {
-  const allowed = ['.pdf', '.txt'];
+// ── Certificate upload (PDF / image – up to 8 MB) ─────────────────────────
+const certificateFileFilter = (req, file, cb) => {
+  const allowed = ['.pdf', '.jpg', '.jpeg', '.png', '.webp'];
   const ext = path.extname(file.originalname).toLowerCase();
   if (allowed.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error('Only PDF or TXT files are accepted for marksheet upload.'), false);
+    cb(new Error('Only PDF or image files (JPG, JPEG, PNG, WEBP) are accepted for certificate upload.'), false);
   }
 };
 
-const marksheetUpload = multer({
+const certificateUpload = multer({
   storage: multer.memoryStorage(),
-  fileFilter: marksheetFileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: certificateFileFilter,
+  limits: { fileSize: 8 * 1024 * 1024 }, // 8 MB
 });
 
 // Error handling middleware for multer
@@ -67,11 +67,14 @@ const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       const isAssignmentUpload = req.originalUrl?.includes('/assignments');
+      const isCertificateUpload = req.originalUrl?.includes('/certificates');
       return res.status(400).json({
         success: false,
         message: isAssignmentUpload
           ? 'File too large. Maximum file size is 10MB.'
-          : 'File too large. Maximum file size is 5MB.',
+          : isCertificateUpload
+            ? 'File too large. Maximum file size is 8MB.'
+            : 'File too large. Maximum file size is 5MB.',
       });
     }
     return res.status(400).json({
@@ -87,4 +90,4 @@ const handleMulterError = (err, req, res, next) => {
   next();
 };
 
-module.exports = { upload, assignmentUpload, marksheetUpload, handleMulterError };
+module.exports = { upload, assignmentUpload, certificateUpload, handleMulterError };
