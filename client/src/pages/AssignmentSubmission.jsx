@@ -26,6 +26,7 @@ const AssignmentSubmission = () => {
   const [submissionText, setSubmissionText] = useState('');
   const [studentDetails, setStudentDetails] = useState(null);
   const [submitMsg, setSubmitMsg] = useState(null);
+  const [lastResult, setLastResult] = useState(null);
 
   const fileRef = useRef();
 
@@ -73,6 +74,15 @@ const AssignmentSubmission = () => {
     const ext = f.name.split('.').pop().toLowerCase();
     if (!['pdf', 'docx', 'txt'].includes(ext)) {
       setSubmitMsg({ type: 'error', text: 'Only PDF, DOCX, or TXT files are allowed.' });
+      if (fileRef.current) fileRef.current.value = '';
+      setFile(null);
+      return;
+    }
+
+    if (f.size > 10 * 1024 * 1024) {
+      setSubmitMsg({ type: 'error', text: 'File too large. Maximum file size is 10MB.' });
+      if (fileRef.current) fileRef.current.value = '';
+      setFile(null);
       return;
     }
 
@@ -88,6 +98,11 @@ const AssignmentSubmission = () => {
       return;
     }
 
+    if (!studentDetails?.studentId) {
+      setSubmitMsg({ type: 'error', text: 'Student profile is incomplete. Please contact admin.' });
+      return;
+    }
+
     if (!file && !submissionText.trim()) {
       setSubmitMsg({ type: 'error', text: 'Upload a file or enter assignment text.' });
       return;
@@ -95,6 +110,7 @@ const AssignmentSubmission = () => {
 
     setSubmitting(true);
     setSubmitMsg(null);
+    setLastResult(null);
 
     const fd = new FormData();
     if (file) fd.append('file', file);
@@ -102,15 +118,29 @@ const AssignmentSubmission = () => {
 
     try {
       const res = await assignmentService.submitAssignedAssignment(selectedAssignmentId, fd);
-      setSubmitMsg({ type: 'success', text: res.message || 'Assignment submitted successfully.' });
+      const resultData = res.data || null;
+      setLastResult(resultData);
+
+      let successText = res.message || 'Assignment submitted successfully.';
+      if (resultData) {
+        const score = Number(resultData.plagiarismScore || 0).toFixed(2);
+        const status = String(resultData.plagiarismStatus || 'clean').toLowerCase();
+        const statusLabel = STATUS_MAP[status]?.label || 'Clean';
+        successText = `${successText} Fraud check result: ${statusLabel} (${score}%).`;
+      }
+
+      setSubmitMsg({ type: 'success', text: successText });
       setFile(null);
       setSubmissionText('');
       if (fileRef.current) fileRef.current.value = '';
       await refreshAssigned();
     } catch (err) {
+      const serverMessage = err.response?.data?.message;
+      const serverError = err.response?.data?.error;
+      const baseMessage = serverMessage || serverError || 'Assignment submission failed. Please verify your input and retry.';
       setSubmitMsg({
         type: 'error',
-        text: err.response?.data?.message || 'Failed to submit assignment. Please try again.',
+        text: baseMessage,
       });
     } finally {
       setSubmitting(false);
@@ -170,6 +200,28 @@ const AssignmentSubmission = () => {
               ? <CheckCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
               : <XCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />}
             {submitMsg.text}
+          </div>
+        )}
+
+        {lastResult && (
+          <div
+            style={{
+              marginBottom: '1rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: 10,
+              background: '#f8fafc',
+              padding: '0.75rem 1rem',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+              gap: '0.5rem',
+              fontSize: '0.82rem',
+              color: '#334155',
+            }}
+          >
+            <div><strong>Plagiarism Status:</strong> {STATUS_MAP[lastResult.plagiarismStatus]?.label || 'Clean'}</div>
+            <div><strong>Plagiarism Score:</strong> {Number(lastResult.plagiarismScore || 0).toFixed(2)}%</div>
+            <div><strong>Risk Level:</strong> {RISK_MAP[lastResult.riskLevel]?.label || 'Low Risk'}</div>
+            <div><strong>Matched Student:</strong> {lastResult.matchedStudentId || '-'}</div>
           </div>
         )}
 

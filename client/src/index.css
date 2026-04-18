@@ -5,6 +5,27 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+
+html {
+   scroll-behavior: smooth;
+}
+
+body {
+   font-family: 'Poppins', sans-serif;
+}
+
+.reveal-fade {
+   opacity: 0;
+   transform: translateY(18px);
+   transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.reveal-fade.is-visible {
+   opacity: 1;
+   transform: translateY(0);
+}
+
 /* Note: Custom CSS files are imported in main.jsx */
 /* The CSS architecture follows this order:
    1. index.css (Tailwind base - this file)

@@ -2,6 +2,7 @@ const Assignment = require('../models/Assignment');
 const AssignedAssignment = require('../models/AssignedAssignment');
 const Student = require('../models/Student');
 const User = require('../models/User');
+const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -11,24 +12,82 @@ const UPLOAD_DIR = path.join(__dirname, '../../uploads/assignments');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 async function extractText(buffer, ext) {
+  if (!buffer || !buffer.length) {
+    return { text: '', error: 'Uploaded file is empty or corrupted.' };
+  }
+
   try {
-    if (ext === '.txt') return buffer.toString('utf8').trim();
+    if (ext === '.txt') {
+      const utf8 = buffer.toString('utf8').replace(/\u0000/g, ' ').trim();
+      const fallback = buffer.toString('latin1').replace(/\u0000/g, ' ').trim();
+      const text = utf8 || fallback;
+      return text
+        ? { text, error: null }
+        : { text: '', error: 'TXT file contains no readable text. Please upload a valid text file.' };
+    }
 
     if (ext === '.pdf') {
       const pdfParse = require('pdf-parse');
-      const data = await pdfParse(buffer);
-      return (data.text || '').trim();
+      let text = '';
+      if (typeof pdfParse === 'function') {
+        const data = await pdfParse(buffer);
+        text = String(data?.text || '').replace(/\s+/g, ' ').trim();
+      } else if (pdfParse.PDFParse) {
+        const parser = new pdfParse.PDFParse({ data: buffer });
+        const data = await parser.getText();
+        text = String(data?.text || '').replace(/\s+/g, ' ').trim();
+      }
+      return text
+        ? { text, error: null }
+        : {
+            text: '',
+            error:
+              'Could not extract readable text from this PDF. It may be scanned/image-based or corrupted. Please upload a text-based PDF, DOCX, TXT, or provide submission text.',
+          };
     }
 
     if (ext === '.docx') {
       const mammoth = require('mammoth');
       const result = await mammoth.extractRawText({ buffer });
-      return (result.value || '').trim();
+      const text = String(result?.value || '').replace(/\s+/g, ' ').trim();
+      return text
+        ? { text, error: null }
+        : {
+            text: '',
+            error:
+              'Could not extract readable text from this DOCX file. The file may be corrupted. Please re-save and upload again or provide submission text.',
+          };
     }
+
+    return {
+      text: '',
+      error: 'Unsupported file format. Only PDF, DOCX, and TXT files are allowed.',
+    };
   } catch (e) {
     console.error(`Text extraction failed (${ext}):`, e.message);
+    if (ext === '.pdf') {
+      return {
+        text: '',
+        error: 'PDF parsing failed. The file may be damaged or encrypted. Please upload a valid text-based PDF or provide submission text.',
+      };
+    }
+
+    if (ext === '.docx') {
+      return {
+        text: '',
+        error: 'DOCX parsing failed. The file may be damaged. Please upload a valid DOCX or provide submission text.',
+      };
+    }
+
+    if (ext === '.txt') {
+      return {
+        text: '',
+        error: 'TXT parsing failed. Please upload a valid UTF-8 text file or provide submission text.',
+      };
+    }
+
+    return { text: '', error: 'Failed to parse uploaded file.' };
   }
-  return '';
 }
 
 const normalizeStudentIds = (ids = []) => {
@@ -43,6 +102,30 @@ const parseYear = (value) => {
   const n = Number(value);
   if (!Number.isInteger(n) || n < 1 || n > 5) return null;
   return n;
+};
+
+const getSubmissionErrorResponse = (err) => {
+  const message = String(err?.message || 'Submission failed');
+
+  if (
+    message.includes('required') ||
+    message.includes('Invalid') ||
+    message.includes('Unable to extract') ||
+    message.includes('extract readable text') ||
+    message.includes('Unsupported file format') ||
+    message.includes('parsing failed') ||
+    message.includes('corrupted') ||
+    message.includes('empty') ||
+    message.includes('already submitted')
+  ) {
+    return { status: 400, message };
+  }
+
+  if (err?.name === 'ValidationError' || err?.name === 'CastError') {
+    return { status: 400, message: message || 'Invalid submission data.' };
+  }
+
+  return { status: 500, message: 'Failed to submit assignment.' };
 };
 
 const resolveCurrentStudent = async (user) => {
@@ -76,32 +159,49 @@ const createSubmissionRecord = async ({ req, title, subject, assignmentTaskId = 
 
   const ext = req.file ? path.extname(req.file.originalname).toLowerCase() : '.txt';
   const uniqueName = req.file ? `${Date.now()}_${req.user._id}${ext}` : '';
+  const allowedExtensions = ['.pdf', '.docx', '.txt'];
+
+  if (req.file && !allowedExtensions.includes(ext)) {
+    throw new Error('Unsupported file format. Only PDF, DOCX, and TXT files are allowed.');
+  }
 
   let textContent = rawText;
   let hash = crypto.createHash('sha256').update(rawText || '').digest('hex');
 
   if (req.file) {
-    hash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
-    fs.writeFileSync(path.join(UPLOAD_DIR, uniqueName), req.file.buffer);
+    if (!req.file.buffer || !req.file.buffer.length) {
+      throw new Error('Uploaded file is empty or corrupted.');
+    }
 
-    const extractedText = (await extractText(req.file.buffer, ext)).trim();
+    hash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
+    const extraction = await extractText(req.file.buffer, ext);
+    const extractedText = String(extraction?.text || '').trim();
+    if (!extractedText && extraction?.error && !rawText) {
+      throw new Error(extraction.error);
+    }
+
     textContent = (extractedText || rawText).slice(0, 50000);
+
+    try {
+      fs.writeFileSync(path.join(UPLOAD_DIR, uniqueName), req.file.buffer);
+    } catch (writeErr) {
+      throw new Error(`Failed to store uploaded file: ${writeErr.message}`);
+    }
   }
 
   if (!textContent) {
-    throw new Error('Unable to extract text content from submission.');
+    throw new Error('Unable to extract text content from submission. Please upload a readable PDF/DOCX/TXT file or provide submission text.');
   }
 
   const fingerprint = simHash64(textContent);
   const comparisonQuery = assignmentTaskId
-    ? { assignmentTask: assignmentTaskId, user: { $ne: req.user._id } }
+    ? { assignmentTask: assignmentTaskId }
     : {
         subject: { $regex: new RegExp(`^${subject.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
-        user: { $ne: req.user._id },
       };
 
   const existing = await Assignment.find(comparisonQuery)
-    .select('_id studentId studentName studentEmail simhash textContent')
+    .select('_id studentId studentName studentEmail simhash textContent fileHash')
     .lean();
 
   let maxSimilarity = 0;
@@ -131,6 +231,21 @@ const createSubmissionRecord = async ({ req, title, subject, assignmentTaskId = 
     }
   }
 
+  const exactBinaryDuplicate = existing.find((prior) => String(prior.fileHash || '') === hash);
+  if (exactBinaryDuplicate) {
+    maxSimilarity = 100;
+    minDistance = 0;
+    topMatch = exactBinaryDuplicate;
+
+    rawMatches.push({
+      assignmentId: exactBinaryDuplicate._id,
+      studentId: exactBinaryDuplicate.studentId,
+      studentName: exactBinaryDuplicate.studentName,
+      hammingDistance: 0,
+      similarity: 100,
+    });
+  }
+
   const { riskLevel, plagiarismStatus } = riskFromDistance(minDistance);
   const plagiarismScore = Number(maxSimilarity.toFixed(2));
 
@@ -143,7 +258,7 @@ const createSubmissionRecord = async ({ req, title, subject, assignmentTaskId = 
     title: title.trim(),
     subject: subject.trim(),
     fileName: req.file ? req.file.originalname : 'text_submission.txt',
-    filePath: uniqueName,
+    filePath: uniqueName || `inline_text_${Date.now()}_${req.user._id}.txt`,
     fileHash: hash,
     fileType: ext.replace('.', ''),
     textContent,
@@ -256,11 +371,61 @@ exports.createAssignedAssignment = async (req, res) => {
 
 exports.getAssignableStudents = async (req, res) => {
   try {
-    const students = await User.find({ role: 'student' })
-      .sort({ name: 1 })
-      .select('_id name email studentId department');
+    const [users, studentProfiles] = await Promise.all([
+      User.find({ role: 'student' })
+        .sort({ name: 1 })
+        .select('_id name email studentId department')
+        .lean(),
+      Student.find({})
+        .select('studentId name email department year')
+        .lean(),
+    ]);
 
-    return res.json({ success: true, data: students });
+    const profileByEmail = new Map(
+      studentProfiles
+        .filter((s) => s.email)
+        .map((s) => [String(s.email).trim().toLowerCase(), s])
+    );
+
+    const profileByStudentId = new Map(
+      studentProfiles
+        .filter((s) => s.studentId)
+        .map((s) => [String(s.studentId).trim(), s])
+    );
+
+    const students = users.map((u) => {
+      const emailKey = String(u.email || '').trim().toLowerCase();
+      const studentIdKey = String(u.studentId || '').trim();
+      const profile = profileByEmail.get(emailKey) || profileByStudentId.get(studentIdKey);
+
+      return {
+        _id: u._id,
+        name: profile?.name || u.name,
+        email: u.email,
+        studentId: profile?.studentId || u.studentId || '',
+        department: profile?.department || u.department || '',
+        year: profile?.year ?? null,
+      };
+    });
+
+    const departments = [...new Set(
+      students.map((s) => String(s.department || '').trim()).filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b));
+
+    const years = [...new Set(
+      students
+        .map((s) => Number(s.year))
+        .filter((y) => Number.isInteger(y) && y >= 1 && y <= 5)
+    )].sort((a, b) => a - b);
+
+    return res.json({
+      success: true,
+      data: {
+        students,
+        departments,
+        years,
+      },
+    });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Failed to fetch students.', error: err.message });
   }
@@ -370,6 +535,10 @@ exports.submitAssignedAssignment = async (req, res) => {
     }
 
     const { assignmentId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(assignmentId)) {
+      return res.status(400).json({ success: false, message: 'Invalid assignment ID.' });
+    }
+
     const task = await AssignedAssignment.findById(assignmentId);
 
     if (!task || !task.isActive) {
@@ -420,12 +589,18 @@ exports.submitAssignedAssignment = async (req, res) => {
     });
   } catch (err) {
     console.error('submitAssignedAssignment error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to submit assignment.', error: err.message });
+    const errorResponse = getSubmissionErrorResponse(err);
+    return res.status(errorResponse.status).json({ success: false, message: errorResponse.message, error: err.message });
   }
 };
 
 exports.submitAssignment = async (req, res) => {
   try {
+    const studentProfile = await resolveCurrentStudent(req.user);
+    if (!studentProfile?.studentId) {
+      return res.status(400).json({ success: false, message: 'Unable to resolve student profile for this account.' });
+    }
+
     if (!req.file && !String(req.body?.submissionText || '').trim()) {
       return res.status(400).json({ success: false, message: 'Upload a file or provide submission text.' });
     }
@@ -457,7 +632,8 @@ exports.submitAssignment = async (req, res) => {
     });
   } catch (err) {
     console.error('submitAssignment error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to submit assignment.', error: err.message });
+    const errorResponse = getSubmissionErrorResponse(err);
+    return res.status(errorResponse.status).json({ success: false, message: errorResponse.message, error: err.message });
   }
 };
 

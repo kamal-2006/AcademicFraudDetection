@@ -7,6 +7,8 @@ const formatDate = (d) =>
 
 const AssignmentManagement = () => {
   const [students, setStudents] = useState([]);
+  const [departmentOptions, setDepartmentOptions] = useState([]);
+  const [yearOptions, setYearOptions] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -21,15 +23,29 @@ const AssignmentManagement = () => {
   const [department, setDepartment] = useState('');
   const [year, setYear] = useState('');
 
-  const departments = useMemo(
-    () => [...new Set(students.map((s) => s.department).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
-    [students]
-  );
+  const departments = useMemo(() => {
+    if (departmentOptions.length) return departmentOptions;
+    return [...new Set(students.map((s) => s.department).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  }, [students, departmentOptions]);
 
-  const years = useMemo(
-    () => [...new Set(students.map((s) => s.year).filter(Boolean))].sort((a, b) => a - b),
-    [students]
-  );
+  const years = useMemo(() => {
+    if (yearOptions.length) return yearOptions;
+    return [...new Set(students.map((s) => Number(s.year)).filter((y) => Number.isInteger(y)))].sort((a, b) => a - b);
+  }, [students, yearOptions]);
+
+  const groupMatchedStudents = useMemo(() => {
+    if (assignmentMode !== 'group') return [];
+
+    return students.filter((s) => {
+      const studentDept = String(s.department || '').trim();
+      const studentYear = Number(s.year);
+
+      const departmentMatches = !department || studentDept === department;
+      const yearMatches = !year || studentYear === Number(year);
+
+      return departmentMatches && yearMatches;
+    });
+  }, [students, assignmentMode, department, year]);
 
   const selectedCount = studentIds.length;
 
@@ -40,7 +56,19 @@ const AssignmentManagement = () => {
         assignmentService.getAssignableStudents(),
         assignmentService.getFacultyAssignedAssignments(),
       ]);
-      setStudents(studentsRes.data || []);
+
+      const assignableData = studentsRes.data;
+      if (Array.isArray(assignableData)) {
+        // Backward compatibility in case old API shape is returned.
+        setStudents(assignableData);
+        setDepartmentOptions([]);
+        setYearOptions([]);
+      } else {
+        setStudents(assignableData?.students || []);
+        setDepartmentOptions(assignableData?.departments || []);
+        setYearOptions(assignableData?.years || []);
+      }
+
       setAssignments(assignmentsRes.data || []);
       setMessage(null);
     } catch (err) {
@@ -90,6 +118,11 @@ const AssignmentManagement = () => {
 
     if (assignmentMode === 'group' && !department && !year) {
       setMessage({ type: 'error', text: 'Please select department or year for group assignment.' });
+      return;
+    }
+
+    if (assignmentMode === 'group' && groupMatchedStudents.length === 0) {
+      setMessage({ type: 'error', text: 'No students match the selected department/year.' });
       return;
     }
 
@@ -218,6 +251,9 @@ const AssignmentManagement = () => {
                   <option value="">All Years</option>
                   {years.map((y) => <option key={y} value={y}>Year {y}</option>)}
                 </select>
+              </div>
+              <div style={{ gridColumn: '1 / -1', fontSize: '0.8rem', color: '#4b5563' }}>
+                Matching students for current selection: <strong>{groupMatchedStudents.length}</strong>
               </div>
             </div>
           )}

@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
@@ -23,6 +23,7 @@ import TakeTest from './pages/TakeTest';
 import AssignmentSubmission from './pages/AssignmentSubmission';
 import CertificateUpload from './pages/CertificateUpload';
 import AssignmentManagement from './pages/AssignmentManagement';
+import LandingPage from './pages/LandingPage';
 
 // Layout component for faculty/admin authenticated pages
 const AppLayout = ({ children }) => {
@@ -164,8 +165,8 @@ function App() {
           }
         />
 
-        {/* ── Root redirect ── */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* ── Landing ── */}
+        <Route path="/" element={<LandingPage />} />
 
         {/* ── 404 ── */}
         <Route path="*" element={<NotFound />} />
