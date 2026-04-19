@@ -169,12 +169,31 @@ exports.logFraudEvent = async (req, res) => {
       session.fraudCount += 1;
       session.fraudScore = scoreNow;
       session.suspicious = true;
+
+      // Populate user/student to get name/id for notification
+      const userDoc = await require('../models/User').findById(userId);
+      const studentDoc = userDoc && userDoc.studentId ? await require('../models/Student').findOne({ studentId: userDoc.studentId }) : null;
+      const studentName = userDoc ? userDoc.name : 'Unknown';
+      const studentIdStr = userDoc && userDoc.studentId ? userDoc.studentId : 'Unknown ID';
+      const studentRefId = studentDoc ? studentDoc._id : null;
+
+      // Create Notification
+      const { createNotification } = require('./notificationController');
+      await createNotification({
+        title: 'Test Fraud Detected',
+        message: `Suspicious activity (${eventType}) detected for student ${studentName} (${studentIdStr}). Details: ${details || 'None'}.`,
+        studentId: studentRefId,
+        fraudType: eventType,
+        relatedId: log._id,
+        relatedModel: 'TestFraudLog',
+        targetRoles: ['admin', 'faculty']
+      });
     }
     if (scoreNow >= 100 || eventType === 'terminated') {
       session.status = 'flagged';
       session.terminated = true;
       // Release the active session lock when terminated by proctoring
-      await User.findByIdAndUpdate(session.userId, { activeSessionId: null });
+      await require('../models/User').findByIdAndUpdate(session.userId, { activeSessionId: null });
     }
     await session.save();
 

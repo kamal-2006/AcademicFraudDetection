@@ -1,7 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, User, LogOut } from 'lucide-react';
+import { User, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect, useRef } from 'react';
+import NotificationBell from './NotificationBell';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -55,10 +56,7 @@ const Navbar = () => {
         {/* Right side - User actions */}
         <div className="navbar-actions">
           {/* Notifications */}
-          <button className="navbar-icon-btn" title="Notifications">
-            <Bell size={20} />
-            <span className="notification-badge"></span>
-          </button>
+          <NotificationBell />
 
           {/* Profile Dropdown */}
           <div className="profile-dropdown-container" ref={dropdownRef}>

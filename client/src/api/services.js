@@ -39,6 +39,24 @@ export const studentService = {
   },
 };
 
+// Notification services
+export const notificationService = {
+  getNotifications: async () => {
+    const response = await api.get('/notifications');
+    return response.data;
+  },
+  
+  markAsRead: async (id) => {
+    const response = await api.put(`/notifications/${id}/read`);
+    return response.data;
+  },
+  
+  markAllAsRead: async () => {
+    const response = await api.put('/notifications/mark-all-read');
+    return response.data;
+  },
+};
+
 // Attendance services
 export const attendanceService = {
   // Get all attendance records with filters

@@ -222,6 +222,18 @@ exports.createPlagiarismCase = async (req, res) => {
     // Populate student details
     await fraudReport.populate('student', 'studentId name email department year');
 
+    // Create Notification
+    const { createNotification } = require('./notificationController');
+    await createNotification({
+      title: 'Plagiarism Detected',
+      message: `Plagiarism detected for student ${student.name} (${studentId}) with score ${plagiarismScore}%.`,
+      studentId: student._id,
+      fraudType: 'Plagiarism',
+      relatedId: fraudReport._id,
+      relatedModel: 'FraudReport',
+      targetRoles: ['admin', 'faculty']
+    });
+
     res.status(201).json({
       success: true,
       message: 'Plagiarism case created successfully',
