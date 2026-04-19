@@ -660,6 +660,19 @@ exports.getAllAssignments = async (req, res) => {
   }
 };
 
+exports.markAsNoted = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const assignment = await Assignment.findByIdAndUpdate(id, { isNoted: true }, { new: true });
+    if (!assignment) {
+      return res.status(404).json({ success: false, message: 'Assignment not found' });
+    }
+    return res.json({ success: true, message: 'Marked as noted', data: assignment });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Error marking assignment', error: err.message });
+  }
+};
+
 exports.getPlagiarismCases = async (req, res) => {
   try {
     const cases = await Assignment.find({

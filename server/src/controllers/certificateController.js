@@ -259,3 +259,20 @@ exports.getCertificateFile = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.markAsNoted = async (req, res) => {
+  try {
+    const Certificate = require('../models/Certificate');
+    const cert = await Certificate.findByIdAndUpdate(
+      req.params.id,
+      { isNoted: true },
+      { new: true }
+    );
+    if (!cert) {
+      return res.status(404).json({ success: false, message: 'Certificate not found' });
+    }
+    res.json({ success: true, data: cert });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

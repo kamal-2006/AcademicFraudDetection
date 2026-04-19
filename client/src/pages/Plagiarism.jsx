@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Filter, AlertTriangle, FileText, Users, CheckCircle, XCircle } from 'lucide-react';
 import Loading from '../components/Loading';
 import Alert from '../components/Alert';
@@ -47,6 +47,16 @@ const Plagiarism = () => {
   const [filter,  setFilter]  = useState('');
 
   useEffect(() => { fetchAll(); }, []);
+
+  const handleNoteCase = async (id) => {
+    try {
+      await api.put(`/assignments/${id}/note`);
+      setCases((prev) => prev.map((c) => c._id === id ? { ...c, isNoted: true } : c));
+    } catch (err) {
+      console.error(err);
+      setError('Failed to mark as noted.');
+    }
+  };
 
   const fetchAll = async () => {
     try {
@@ -161,7 +171,7 @@ const Plagiarism = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
                 <tr style={{ background: '#fafafa' }}>
-                  {['Student', 'Assignment Title', 'Subject', 'Similarity', 'Status', 'Matched With', 'Submitted'].map(h => (
+                    {['Student', 'Assignment Title', 'Subject', 'Similarity', 'Status', 'Matched With', 'Submitted', 'Action'].map(h => (
                     <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -202,10 +212,16 @@ const Plagiarism = () => {
                       <td style={{ padding: '0.75rem 1rem', color: '#6b7280', fontSize: '0.78rem', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {matchNames || '-'}
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', color: C.gray, whiteSpace: 'nowrap' }}>
-                        {fmt(c.submittedAt)}
-                      </td>
-                    </tr>
+                                              <td style={{ padding: '0.75rem 1rem' }}>
+                          {c.isNoted ? (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#10b981', fontSize: '0.75rem', fontWeight: 600 }}>
+                              <CheckCircle size={14} /> Noted
+                            </span>
+                          ) : (
+                            <button onClick={() => handleNoteCase(c._id)} style={{ background: '#ede9fe', color: '#7c3aed', padding: '0.35rem 0.6rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, border: 'none', cursor: 'pointer' }}>Note</button>
+                          )}
+                        </td>
+                      </tr>
                   );
                 })}
               </tbody>
@@ -235,3 +251,4 @@ const Plagiarism = () => {
 };
 
 export default Plagiarism;
+

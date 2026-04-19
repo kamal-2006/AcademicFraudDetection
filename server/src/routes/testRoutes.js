@@ -26,6 +26,19 @@ router.get(
   testController.getAllTestResults
 );
 
+// Note an alert
+router.put(
+  '/logs/:logId/note',
+  authorize('admin', 'faculty'),
+  testController.markLogAsNoted
+);
+
+router.put(
+  '/sessions/:id/note',
+  authorize('admin', 'faculty'),
+  testController.markSessionAsNoted
+);
+
 // Admin / Faculty: quiz fraud cases (flagged sessions)
 router.get(
   '/fraud-cases',
@@ -49,3 +62,4 @@ router.get(
 router.post('/proctoring/analyze', testController.analyzeFrame);
 
 module.exports = router;
+

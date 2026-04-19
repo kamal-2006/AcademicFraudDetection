@@ -437,6 +437,34 @@ exports.getSessionHeartbeat = async (req, res) => {
   }
 };
 
+// PUT /api/test/sessions/:id/note — admin/faculty: mark flagged session as noted
+exports.markLogAsNoted = async (req, res) => {
+  try {
+    const { logId } = req.params;
+    const log = await TestFraudLog.findByIdAndUpdate(logId, { isNoted: true }, { new: true });
+    if (!log) return res.status(404).json({ success: false, message: 'Log not found' });
+    return res.json({ success: true, message: 'Log noted', data: log });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Failed to note log', error: err.message });
+  }
+};
+
+exports.markSessionAsNoted = async (req, res) => {
+  try {
+    const session = await TestSession.findByIdAndUpdate(
+      req.params.id,
+      { isNoted: true },
+      { new: true }
+    );
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Session not found' });
+    }
+    res.json({ success: true, data: session });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // GET /api/test/fraud-cases — admin/faculty: all flagged sessions as fraud case list
 exports.getQuizFraudCases = async (req, res) => {
   try {
@@ -485,3 +513,4 @@ exports.getQuizFraudCases = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+

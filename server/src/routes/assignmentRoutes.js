@@ -21,8 +21,7 @@ router.get('/faculty/assigned', authorize('admin', 'faculty'), ctrl.getFacultyAs
 router.get('/faculty/assigned/:assignmentId/submissions', authorize('admin', 'faculty'), ctrl.getFacultyAssignmentSubmissions);
 
 // Admin / Faculty only
-router.get('/plagiarism', authorize('admin', 'faculty'), ctrl.getPlagiarismCases);
-router.get('/stats',      authorize('admin', 'faculty'), ctrl.getAssignmentStats);
+router.get('/plagiarism', authorize('admin', 'faculty'), ctrl.getPlagiarismCases);  router.put('/:id/note', authorize('admin', 'faculty'), ctrl.markAsNoted);router.get('/stats',      authorize('admin', 'faculty'), ctrl.getAssignmentStats);
 router.get('/',           authorize('admin', 'faculty'), ctrl.getAllAssignments);
 
 module.exports = router;

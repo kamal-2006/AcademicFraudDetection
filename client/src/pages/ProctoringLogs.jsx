@@ -1,12 +1,12 @@
-﻿import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Shield, AlertTriangle, Users, Camera, Volume2, Maximize2,
   Eye, Wifi, RefreshCw, ChevronLeft, ChevronRight, XCircle,
-  Activity, Filter, LogIn, Search, X,
+  Activity, Filter, LogIn, Search, X, CheckCircle,
 } from 'lucide-react';
 import api from '../api/axios';
 
-// ── Event type metadata ─────────────────────────────────────────────
+// -- Event type metadata ---------------------------------------------
 const EVENT_META = {
   multiple_faces:   { label: 'Multiple Faces',   color: '#d97706', bg: '#fef3c7', icon: Users,      pts: 30  },
   no_face:          { label: 'No Face',           color: '#ea580c', bg: '#fff7ed', icon: Eye,         pts: 20  },
@@ -33,14 +33,14 @@ const FILTER_EVENTS = [
 ];
 
 const fmt = (iso) => {
-  if (!iso) return '—';
+  if (!iso) return '�';
   const d = new Date(iso);
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-    + ' · '
+    + ' � '
     + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-// ── EventBadge ──────────────────────────────────────────────────────
+// -- EventBadge ------------------------------------------------------
 const EventBadge = ({ type }) => {
   const meta = EVENT_META[type] || { label: type, color: '#9ca3af', bg: '#f9fafb', icon: AlertTriangle };
   const Icon = meta.icon;
@@ -56,7 +56,7 @@ const EventBadge = ({ type }) => {
   );
 };
 
-// ── FraudBar ────────────────────────────────────────────────────────
+// -- FraudBar --------------------------------------------------------
 const FraudBar = ({ score }) => {
   const pct   = Math.min(100, score || 0);
   const color = pct >= 100 ? '#dc2626' : pct >= 70 ? '#d97706' : pct >= 40 ? '#f59e0b' : '#10b981';
@@ -72,7 +72,7 @@ const FraudBar = ({ score }) => {
   );
 };
 
-// ── Main Component ──────────────────────────────────────────────────
+// -- Main Component --------------------------------------------------
 const ProctoringLogs = () => {
   const [logs, setLogs]               = useState([]);
   const [summary, setSummary]         = useState(null);
@@ -126,17 +126,27 @@ const ProctoringLogs = () => {
       setLoading(false);
     }
   }, [page, filterEvent, searchQuery]);
+  const handleNoteLog = async (id) => {
+    try {
+      setError('');
+      await api.put(`/test/logs/${id}/note`);
+      setLogs((prev) => prev.map((l) => l._id === id ? { ...l, isNoted: true } : l));
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || err.message || 'Failed to mark as noted.');
+    }
+  };
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
   useEffect(() => { setPage(1); }, [filterEvent]);
 
   const clearSearch = () => { setSearchInput(''); setSearchQuery(''); };
 
-  /* ─────────────────────────────────────── */
+  /* --------------------------------------- */
   return (
     <div>
 
-      {/* ── Page header ── */}
+      {/* -- Page header -- */}
       <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           <div style={{
@@ -172,7 +182,7 @@ const ProctoringLogs = () => {
         </button>
       </div>
 
-      {/* ── Summary ── */}
+      {/* -- Summary -- */}
       {summary && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
           {[
@@ -197,7 +207,7 @@ const ProctoringLogs = () => {
         </div>
       )}
 
-      {/* ── Search + Filter toolbar ── */}
+      {/* -- Search + Filter toolbar -- */}
       <div style={{
         background: '#fff', borderRadius: 14, padding: '0.875rem 1rem',
         border: '1.5px solid #f1f5f9', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
@@ -214,7 +224,7 @@ const ProctoringLogs = () => {
           <Search size={14} color={searchQuery ? '#7c3aed' : '#9ca3af'} />
           <input
             type="text"
-            placeholder="Search by student name, ID or email…"
+            placeholder="Search by student name, ID or email�"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             style={{
@@ -245,11 +255,11 @@ const ProctoringLogs = () => {
 
         <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600, whiteSpace: 'nowrap' }}>
           {total} event{total !== 1 ? 's' : ''}
-          {searchQuery && <span style={{ color: '#7c3aed' }}> · "{searchQuery}"</span>}
+          {searchQuery && <span style={{ color: '#7c3aed' }}> � "{searchQuery}"</span>}
         </span>
       </div>
 
-      {/* ── Error ── */}
+      {/* -- Error -- */}
       {error && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem',
@@ -260,7 +270,7 @@ const ProctoringLogs = () => {
         </div>
       )}
 
-      {/* ── Table card ── */}
+      {/* -- Table card -- */}
       <div style={{
         background: '#fff', borderRadius: 14,
         border: '1.5px solid #f1f5f9',
@@ -274,7 +284,7 @@ const ProctoringLogs = () => {
               border: '3px solid #ede9fe', borderTopColor: '#7c3aed',
               animation: 'spin 0.8s linear infinite',
             }} />
-            Loading proctoring logs…
+            Loading proctoring logs�
           </div>
         ) : logs.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3.5rem', color: '#9ca3af' }}>
@@ -296,7 +306,7 @@ const ProctoringLogs = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f9f8fd', borderBottom: '2px solid #ede9fe' }}>
-                  {['Student', 'Event', 'Fraud Score', 'Details', 'Time'].map((h) => (
+                    {['Student', 'Event', 'Fraud Score', 'Details', 'Time', 'Action'].map((h) => (
                     <th key={h} style={{
                       padding: '0.75rem 1.1rem', textAlign: 'left',
                       fontSize: '0.7rem', fontWeight: 700, color: '#6b7280',
@@ -353,7 +363,7 @@ const ProctoringLogs = () => {
                     {/* Details */}
                     <td style={{ padding: '0.85rem 1.1rem', maxWidth: 220 }}>
                       <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {log.details || '—'}
+                        {log.details || '�'}
                       </span>
                     </td>
 
@@ -361,14 +371,31 @@ const ProctoringLogs = () => {
                     <td style={{ padding: '0.85rem 1.1rem', whiteSpace: 'nowrap' }}>
                       <span style={{ fontSize: '0.77rem', color: '#9ca3af' }}>{fmt(log.timestamp)}</span>
                     </td>
-                  </tr>
+                      {/* Action */}
+                      <td style={{ padding: '0.85rem 1.1rem', whiteSpace: 'nowrap' }}>
+                        {log.isNoted ? (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#10b981', fontSize: '0.75rem', fontWeight: 600 }}>
+                            <CheckCircle size={14} /> Noted
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleNoteLog(log._id)}
+                            style={{
+                              background: '#ede9fe', color: '#7c3aed', padding: '0.35rem 0.6rem',
+                              borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+                            }}
+                          >
+                            Note
+                          </button>
+                        )}
+                      </td>                  </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
 
-        {/* ── Pagination ── */}
+        {/* -- Pagination -- */}
         {!loading && totalPages > 1 && (
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -405,7 +432,7 @@ const ProctoringLogs = () => {
                   </button>
                 );
               })}
-              {totalPages > 7 && <span style={{ color: '#9ca3af', fontSize: '0.82rem' }}>…{totalPages}</span>}
+              {totalPages > 7 && <span style={{ color: '#9ca3af', fontSize: '0.82rem' }}>�{totalPages}</span>}
             </div>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
@@ -427,3 +454,6 @@ const ProctoringLogs = () => {
 };
 
 export default ProctoringLogs;
+
+
+

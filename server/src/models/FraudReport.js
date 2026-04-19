@@ -175,10 +175,11 @@ const fraudReportSchema = new mongoose.Schema(
     // Status tracking
     status: {
       type: String,
-      enum: ['Pending Review', 'Under Investigation', 'Confirmed', 'Dismissed', 'Resolved'],
+      enum: ['Pending Review', 'Under Investigation', 'Confirmed', 'Dismissed', 'Resolved', 'Noted'],
       default: 'Pending Review',
       index: true,
     },
+    isNoted: { type: Boolean, default: false },
     reviewedBy: {
       type: String,
       trim: true,

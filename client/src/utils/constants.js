@@ -39,4 +39,6 @@ export const STATUS_COLORS = {
   resolved: 'bg-green-100 text-green-800',
   confirmed: 'bg-red-100 text-red-800',
   dismissed: 'bg-gray-100 text-gray-600',
+  noted: 'bg-purple-100 text-purple-800',
 };
+

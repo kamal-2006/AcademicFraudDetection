@@ -175,6 +175,14 @@ export const examService = {
   },
 };
 
+// Certificate service
+export const certificateService = {
+  noteCertificate: async (id) => {
+    const response = await api.put(`/certificates/${id}/note`);
+    return response.data;
+  },
+};
+
 // Plagiarism services
 export const plagiarismService = {
   getAllPlagiarismCases: async () => {

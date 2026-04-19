@@ -37,6 +37,7 @@ const assignmentSchema = new mongoose.Schema(
     textContent: { type: String, default: '' },
     simhash:     { type: String, default: '', index: true },
     plagiarismScore: { type: Number, default: 0, min: 0, max: 100, index: true },
+    isNoted: { type: Boolean, default: false },
     matchedStudentId: { type: String, default: '', trim: true },
     riskLevel: {
       type: String,

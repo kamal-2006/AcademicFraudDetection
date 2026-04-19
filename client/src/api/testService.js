@@ -6,4 +6,8 @@ export const testService = {
     const response = await api.get(`/test/results/all?${p}`);
     return response.data;
   },
+  noteSession: async (id) => {
+    const response = await api.put(`/test/sessions/${id}/note`);
+    return response.data;
+  }
 };

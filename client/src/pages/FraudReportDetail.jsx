@@ -90,6 +90,7 @@ const FraudReportDetail = () => {
         'pending': 'Pending Review',
         'investigating': 'Under Investigation',
         'resolved': 'Resolved',
+        'noted': 'Noted',
         'confirmed': 'Confirmed',
         'dismissed': 'Dismissed'
       };
@@ -218,8 +219,15 @@ const FraudReportDetail = () => {
                 disabled={updating || report.status === 'dismissed'}
               >
                 Dismiss Case
-              </Button>
-            </div>
+                </Button>
+                <Button
+                  variant="success"
+                  onClick={() => updateStatus('noted')}
+                  disabled={updating || report.status === 'noted'}
+                >
+                  Mark as Noted
+                </Button>
+              </div>
           </Card>
         </div>
 
@@ -295,3 +303,6 @@ const FraudReportDetail = () => {
 };
 
 export default FraudReportDetail;
+
+
+

@@ -46,6 +46,7 @@ const testFraudLogSchema = new mongoose.Schema(
     faceCount: { type: Number, default: null },
     pointsAdded: { type: Number, default: 0 },
     fraudScoreAtTime: { type: Number, default: 0 },
+    isNoted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

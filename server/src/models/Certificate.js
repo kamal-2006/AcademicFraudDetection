@@ -33,6 +33,7 @@ const certificateSchema = new mongoose.Schema(
     },
     fraudScore: { type: Number, default: 0 },
     verificationSummary: { type: String, default: '' },
+    isNoted: { type: Boolean, default: false },
 
     uploadedAt: { type: Date, default: Date.now, index: true },
   },

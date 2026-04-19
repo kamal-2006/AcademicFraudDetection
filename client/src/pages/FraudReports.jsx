@@ -1,7 +1,7 @@
-﻿import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   AlertTriangle, Shield, FileText, Clock,
-  XCircle, Search, ChevronLeft, ChevronRight, Filter,
+  XCircle, Search, ChevronLeft, ChevronRight, Filter, CheckCircle
 } from 'lucide-react';
 import api from '../api/axios';
 
@@ -53,6 +53,20 @@ const FraudReports = () => {
   const [stats,      setStats]      = useState({ quiz: 0, certificate: 0, total: 0 });
   const searchTimer = useRef(null);
 
+  const handleNoteCase = async (id, fraudType) => {
+    try {
+      if (fraudType === 'Fake Certificate' || fraudType === 'Suspicious Certificate') {
+        await api.put(`/certificates/${id}/note`);
+      } else {
+        await api.put(`/test/sessions/${id}/note`);
+      }
+      setCases((prev) => prev.map((c) => c._id === id ? { ...c, isNoted: true } : c));
+    } catch (err) {
+      console.error(err);
+      setError('Failed to update noted status.');
+    }
+  };
+
   const fetchData = useCallback(async (q, type, pg) => {
     setLoading(true);
     setError('');
@@ -81,6 +95,7 @@ const FraudReports = () => {
                         : (s.fraudScore ?? 0) >= 25 ? 'medium' : 'low',
           date:          s.submittedAt || s.updatedAt,
           topViolations: (item.topViolations || []).map((v) => v.eventType.replace(/_/g, ' ')),
+          isNoted:       s.isNoted || false,
         };
       });
 
@@ -97,6 +112,7 @@ const FraudReports = () => {
           severity:      m.verificationStatus === 'likely_fake' ? 'critical' : 'medium',
           date:          m.uploadedAt,
           topViolations: [],
+          isNoted:       m.isNoted || false,
         }));
 
       let combined = [...quizCases, ...certificateCases]
@@ -191,22 +207,22 @@ const FraudReports = () => {
       {/* Table */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ede9fe', overflow: 'hidden', boxShadow: '0 1px 4px rgba(109,40,217,0.06)' }}>
         <div style={{
-          display: 'grid', gridTemplateColumns: '2fr 1.4fr 2fr 3fr 0.9fr 1.6fr',
+          display: 'grid', gridTemplateColumns: '2fr 1.4fr 2fr 3fr 0.9fr 1.6fr 1fr',
           padding: '0.75rem 1.25rem', background: '#faf9ff', borderBottom: '1px solid #ede9fe',
           fontSize: '0.7rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em',
         }}>
-          <span>Student</span><span>Fraud Type</span><span>Violations</span><span>Description</span><span>Severity</span><span>Date</span>
-        </div>
-
-        {error && (
-          <div style={{ padding: '1.5rem', textAlign: 'center', color: '#dc2626', fontSize: '0.85rem' }}>
-            <AlertTriangle size={16} style={{ marginRight: 6 }} />{error}
+            <span>Student</span><span>Fraud Type</span><span>Violations</span><span>Description</span><span>Severity</span><span>Date</span><span>Action</span>
           </div>
-        )}
+
+          {error && (
+            <div style={{ padding: '1.5rem', textAlign: 'center', color: '#dc2626', fontSize: '0.85rem' }}>
+              <AlertTriangle size={16} style={{ marginRight: 6 }} />{error}
+            </div>
+          )}
 
         {loading ? (
           Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1.4fr 2fr 3fr 0.9fr 1.6fr', padding: '1rem 1.25rem', borderBottom: '1px solid #f3f4f6', gap: '0.5rem' }}>
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1.4fr 2fr 3fr 0.9fr 1.6fr 1fr', padding: '1rem 1.25rem', borderBottom: '1px solid #f3f4f6', gap: '0.5rem' }}>
               {Array.from({ length: 6 }).map((__, j) => (
                 <div key={j} style={{ height: 14, borderRadius: 6, background: '#f3f4f6', animation: 'fr-pulse 1.4s ease-in-out infinite', animationDelay: `${j * 0.1}s` }} />
               ))}
@@ -223,7 +239,7 @@ const FraudReports = () => {
             const { Icon } = tc;
             return (
               <div key={`${c._id}-${i}`} style={{
-                display: 'grid', gridTemplateColumns: '2fr 1.4fr 2fr 3fr 0.9fr 1.6fr',
+                display: 'grid', gridTemplateColumns: '2fr 1.4fr 2fr 3fr 0.9fr 1.6fr 1fr',
                 padding: '0.875rem 1.25rem', borderBottom: '1px solid #f9f8ff',
                 alignItems: 'center', gap: '0.25rem', transition: 'background 0.1s',
               }}
@@ -248,8 +264,16 @@ const FraudReports = () => {
                 <p style={{ margin: 0, fontSize: '0.78rem', color: '#6b7280', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                   {c.description}
                 </p>
-                <SeverityBadge level={c.severity} />
-                <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{fmtDate(c.date)}</span>
+                
+                  <div>
+                    {c.isNoted ? (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#10b981', fontSize: '0.75rem', fontWeight: 600 }}>
+                        <CheckCircle size={14} /> Noted
+                      </span>
+                    ) : (
+                      <button onClick={() => handleNoteCase(c._id, c.fraudType)} style={{ background: '#ede9fe', color: '#7c3aed', padding: '0.35rem 0.6rem', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600, border: 'none', cursor: 'pointer' }}>Note</button>
+                    )}
+                  </div>
               </div>
             );
           })
@@ -289,3 +313,7 @@ const FraudReports = () => {
 };
 
 export default FraudReports;
+
+
+
+

@@ -17,5 +17,6 @@ router.post(
 router.get('/my', protect, authorize('student'), ctrl.getMyCertificates);
 router.get('/', protect, authorize('admin', 'faculty'), ctrl.getAllCertificates);
 router.get('/:id/file', protect, ctrl.getCertificateFile);
+router.put('/:id/note', protect, authorize('admin', 'faculty'), ctrl.markAsNoted);
 
 module.exports = router;
