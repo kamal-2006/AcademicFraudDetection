@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, Check, CheckCircle, ChevronDown } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, Check, CheckCircle, GraduationCap, UserCheck, ShieldCheck, Sparkles, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const TERMS_ITEMS = [
@@ -13,8 +13,38 @@ const TERMS_ITEMS = [
   { key: 7, b: 'Misuse:', text: 'Misuse of this system may result in account suspension and disciplinary action.' },
 ];
 
+const DEMO_ACCOUNTS = [
+  {
+    role: 'student',
+    title: 'Student Demo Account',
+    email: 'student@demo.com',
+    password: 'student123',
+    icon: GraduationCap,
+    iconClass: 'ag-demo-student-icon',
+    target: 'Student Portal',
+  },
+  {
+    role: 'faculty',
+    title: 'Faculty Demo Account',
+    email: 'faculty@demo.com',
+    password: 'faculty123',
+    icon: UserCheck,
+    iconClass: 'ag-demo-faculty-icon',
+    target: 'Faculty Dashboard',
+  },
+  {
+    role: 'admin',
+    title: 'Admin Demo Account',
+    email: 'admin@demo.com',
+    password: 'admin123',
+    icon: ShieldCheck,
+    iconClass: 'ag-demo-admin-icon',
+    target: 'Admin Dashboard',
+  },
+];
+
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -31,8 +61,8 @@ const styles = `
   .ag-card {
     display: flex;
     width: 100%;
-    max-width: 940px;
-    min-height: 620px;
+    max-width: 960px;
+    min-height: 640px;
     background: #fff;
     border-radius: 24px;
     overflow: hidden;
@@ -170,12 +200,12 @@ const styles = `
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 52px 48px;
+    padding: 44px 44px;
     overflow-y: auto;
   }
 
   .ag-form-header {
-    margin-bottom: 32px;
+    margin-bottom: 24px;
   }
 
   .ag-form-header h1 {
@@ -191,6 +221,121 @@ const styles = `
     font-size: 13.5px;
     color: #8a9099;
     font-weight: 400;
+  }
+
+  /* Quick Demo Accounts Card Box */
+  .ag-demo-box {
+    margin-bottom: 22px;
+    padding: 16px;
+    background: #f4f8f6;
+    border: 1px dashed #63a082;
+    border-radius: 14px;
+  }
+
+  .ag-demo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .ag-demo-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #0d1f2d;
+    letter-spacing: 0.2px;
+  }
+
+  .ag-demo-subtitle {
+    font-size: 11px;
+    color: #3b7a5a;
+    font-weight: 600;
+    background: #dcefe6;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  .ag-demo-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ag-demo-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 12px;
+    background: #ffffff;
+    border: 1px solid #d4e2db;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.18s ease;
+    width: 100%;
+  }
+
+  .ag-demo-btn:hover:not(:disabled) {
+    border-color: #63a082;
+    background: #f0faf5;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99,160,130,0.15);
+  }
+
+  .ag-demo-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .ag-demo-btn-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .ag-demo-btn-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .ag-demo-student-icon { background: #e0f2fe; color: #0284c7; }
+  .ag-demo-faculty-icon { background: #fef3c7; color: #d97706; }
+  .ag-demo-admin-icon   { background: #f3e8ff; color: #9333ea; }
+
+  .ag-demo-btn-info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ag-demo-btn-role {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0d1f2d;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ag-demo-btn-email {
+    font-size: 11px;
+    color: #6c757d;
+  }
+
+  .ag-demo-target {
+    font-size: 11px;
+    color: #4b5563;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
   }
 
   /* Alerts */
@@ -218,7 +363,7 @@ const styles = `
   }
 
   /* Fields */
-  .ag-form { display: flex; flex-direction: column; gap: 18px; margin-bottom: 24px; }
+  .ag-form { display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; }
 
   .ag-field { display: flex; flex-direction: column; gap: 6px; }
 
@@ -488,6 +633,33 @@ const Login = () => {
 
   const isEmailValid = (value) => /^\S+@\S+\.\S+$/.test(value);
 
+  // Auto trigger demo login if ?demo=student / faculty / admin in URL
+  useEffect(() => {
+    const demoType = searchParams.get('demo');
+    if (demoType) {
+      const match = DEMO_ACCOUNTS.find(a => a.role === demoType.toLowerCase());
+      if (match) {
+        handleQuickDemo(match);
+      }
+    }
+  }, [searchParams]);
+
+  const handleQuickDemo = async (demoAccount) => {
+    setEmail(demoAccount.email);
+    setPassword(demoAccount.password);
+    setTermsChecked(true);
+    setError('');
+    setLoading(true);
+    const result = await login(demoAccount.email, demoAccount.password);
+    if (!result.success) {
+      const normalizedMessage = /invalid|credential|email|password|unauthorized|401/i.test(result.message)
+        ? 'Invalid demo credentials'
+        : result.message;
+      setError(normalizedMessage);
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -540,7 +712,46 @@ const Login = () => {
           <div className="ag-right">
             <div className="ag-form-header">
               <h1>Sign in</h1>
-              <p>Enter your credentials to access your account</p>
+              <p>Enter your credentials or select a demo account below</p>
+            </div>
+
+            {/* Quick Demo Accounts Card */}
+            <div className="ag-demo-box">
+              <div className="ag-demo-header">
+                <div className="ag-demo-title">
+                  <Sparkles size={14} style={{ color: '#63a082' }} />
+                  <span>Instant Demo Access</span>
+                </div>
+                <span className="ag-demo-subtitle">1-Click Login</span>
+              </div>
+              <div className="ag-demo-buttons">
+                {DEMO_ACCOUNTS.map((demo) => {
+                  const Icon = demo.icon;
+                  return (
+                    <button
+                      key={demo.role}
+                      type="button"
+                      className="ag-demo-btn"
+                      disabled={loading}
+                      onClick={() => handleQuickDemo(demo)}
+                    >
+                      <div className="ag-demo-btn-left">
+                        <div className={`ag-demo-btn-icon ${demo.iconClass}`}>
+                          <Icon size={16} />
+                        </div>
+                        <div className="ag-demo-btn-info">
+                          <span className="ag-demo-btn-role">{demo.title}</span>
+                          <span className="ag-demo-btn-email">{demo.email} • pass: {demo.password}</span>
+                        </div>
+                      </div>
+                      <div className="ag-demo-target">
+                        <span>{demo.target}</span>
+                        <ArrowRight size={13} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {justRegistered && (
@@ -560,7 +771,7 @@ const Login = () => {
                     type="email" id="login-email" className={`ag-input${error ? ' ag-input-error' : ''}`}
                     placeholder="you@example.com" value={email}
                     onChange={e => { setEmail(e.target.value); setError(''); }}
-                    disabled={loading} autoComplete="email" autoFocus
+                    disabled={loading} autoComplete="email"
                   />
                 </div>
               </div>
@@ -645,4 +856,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Login;

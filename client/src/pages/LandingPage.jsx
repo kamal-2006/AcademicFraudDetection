@@ -144,6 +144,18 @@ function LandingPage() {
 
           <div className="flex items-center gap-3">
             <Link
+              to="/login?demo=student"
+              className="rounded-full border border-teal-300/40 bg-teal-500/10 px-3.5 py-1.5 text-xs font-medium text-teal-200 transition hover:border-teal-300 hover:bg-teal-500/20"
+            >
+              🎓 Student Demo
+            </Link>
+            <Link
+              to="/login?demo=faculty"
+              className="rounded-full border border-cyan-300/40 bg-cyan-500/10 px-3.5 py-1.5 text-xs font-medium text-cyan-200 transition hover:border-cyan-300 hover:bg-cyan-500/20"
+            >
+              👨‍🏫 Faculty Demo
+            </Link>
+            <Link
               to="/login"
               className="rounded-full border border-cyan-300/50 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:border-cyan-300 hover:bg-cyan-300/10"
             >
@@ -172,16 +184,22 @@ function LandingPage() {
               Ensuring academic integrity using AI-powered monitoring and fraud detection.
               Built for institutions that need transparency, automation, and trust at scale.
             </p>
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3">
               <Link
-                to="/register"
-                className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/30 transition hover:-translate-y-0.5 hover:from-cyan-300 hover:to-blue-400"
+                to="/login?demo=student"
+                className="rounded-full bg-gradient-to-r from-teal-400 to-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-teal-500/30 transition hover:-translate-y-0.5 hover:from-teal-300 hover:to-emerald-400"
               >
-                Get Started
+                Try Student Demo
+              </Link>
+              <Link
+                to="/login?demo=faculty"
+                className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/30 transition hover:-translate-y-0.5 hover:from-cyan-300 hover:to-blue-400"
+              >
+                Try Faculty Demo
               </Link>
               <Link
                 to="/login"
-                className="rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-white transition hover:border-cyan-300 hover:bg-cyan-200/10"
+                className="rounded-full border border-white/25 px-5 py-3 text-sm font-semibold text-white transition hover:border-cyan-300 hover:bg-cyan-200/10"
               >
                 Login
               </Link>
