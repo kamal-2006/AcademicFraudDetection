@@ -17,20 +17,11 @@ const DEMO_ACCOUNTS = [
   {
     role: 'student',
     title: 'Student Demo Account',
-    email: 'student@demo.com',
-    password: 'student123',
+    email: 'kamal@gmail.com',
+    password: '123456',
     icon: GraduationCap,
     iconClass: 'ag-demo-student-icon',
     target: 'Student Portal',
-  },
-  {
-    role: 'faculty',
-    title: 'Faculty Demo Account',
-    email: 'faculty@demo.com',
-    password: 'faculty123',
-    icon: UserCheck,
-    iconClass: 'ag-demo-faculty-icon',
-    target: 'Faculty Dashboard',
   },
   {
     role: 'admin',
@@ -856,4 +847,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Login;
