@@ -7,9 +7,9 @@ const seedDemoAccounts = async () => {
   try {
     const demoUsers = [
       {
-        email: 'student@demo.com',
+        email: 'thiru@gmail.com',
         name: 'Demo Student',
-        password: 'student123',
+        password: '123456',
         role: 'student',
         studentId: 'STU-2026-001',
         department: 'Computer Science',
@@ -17,9 +17,9 @@ const seedDemoAccounts = async () => {
         gpa: 3.8,
       },
       {
-        email: 'faculty@demo.com',
+        email: 'yuva@gmail.com',
         name: 'Dr. Demo Faculty',
-        password: 'faculty123',
+        password: '123456',
         role: 'faculty',
         department: 'Computer Science',
       },
